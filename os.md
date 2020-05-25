@@ -81,6 +81,13 @@ Swap:      2031612          0    2031612
 
 
 
+
+https://www.cnblogs.com/kevingrace/p/5991604.html
+https://www.cnblogs.com/logo-fox/p/5820910.html
+https://blog.csdn.net/bingqingsuimeng/article/details/51858858
+
+
+
 ### 文件
 
 #### [第八章、Linux 磁盘与文件系统管理](http://cn.linux.vbird.org/linux_basic/0230filesystem_1.php)

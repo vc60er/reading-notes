@@ -1,3 +1,35 @@
+## 分布式
+### 分布式任务
+[dkron](https://github.com/distribworks/dkron)
+
+
+### 分布式锁
+
+### 一致性算法
+raft
+Gossip
+
+### 一致性哈希
+
+### zk，etcd，consul
+**zk**
+
+**etcd**
+
+**consul**
+
+
+
+### 分布式id
+https://www.cnblogs.com/li-peng/p/12124249.html
+https://github.com/micro/go-micro
+https://github.com/micro/micro
+https://github.com/smallnest/rpcx
+https://github.com/go-kit/kit
+https://colobu.com/2020/02/21/ID-generator/
+
+
+
 ## 索引
 ### b tree & b+ tree
 b:
@@ -154,4 +186,10 @@ map的现实
 开放寻址法：只有数组，冲突后，探测数组中的下一个索引的数据
 拉链法：数组加上链表实现，冲突后，连接到连标上
 搜索树法一般采用自平衡搜索树，包括：AVL 树，红黑树
+
+
+
+
+
+
 

@@ -179,7 +179,7 @@ type mapextra struct {
     当 B >= 15，也就是 bucket 总数 2^B 大于等于 2^15，如果 overflow 的 bucket 数量超过 2^15
 ```
 
-```go
+```golang
     if B < 15 && count(overflow) > 2^B {        
     } else if B >= 15 && count(overflow) > 2^15 {        
     }
@@ -207,7 +207,7 @@ type mapextra struct {
 
 **带方法的接口**
 
-```go
+```golang
 type eface struct { // 16 bytes
     _type *_type
     data  unsafe.Pointer
@@ -229,7 +229,7 @@ type _type struct {
 
 **不带方法的接口**
 
-```go
+```golang
 type iface struct { // 16 bytes
     tab  *itab
     data unsafe.Pointer
@@ -280,7 +280,9 @@ type itab struct { // 32 bytes
 
 ### sync.Map
 
-```go
+读写分离的map，写需要锁，读不需要锁。read存放只读数据，dirty存放被修改过的数据，标记删除，数据通过指针共享，没有重复的数据
+
+```golang
 type Map struct {
 	mu Mutex
 	read atomic.Value // readOnly
@@ -290,7 +292,7 @@ type Map struct {
 
 type readOnly struct {
     m  map[interface{}]*entry
-    amended bool 
+    amended bool   // Map.dirty的数据和这里的 m 中的数据不一样的时候，为true
 }
 
 type entry struct {
@@ -299,24 +301,102 @@ type entry struct {
 }
 ```
 
-**原理**
-
-1. 读写分离的，read存放只读数据，dirty存放被修改过的数据，数据通过指针共享，没有重复的数据
-- 读失败一定测次数智慧，就dirty中的数据同步到read中，清空dirty
-- 增（改）数据：1.修改read，2.修改dirty，3.向dirty中增加新数据，如果dirty为nil，需要先从read中同步数据到dirty中
 
 
-### golang.org/x/time/rate
+**查询**
+
+1. 查只读map，
+2. 如果没有查到，并且dirty中数据被修改过，查找dirty中的数据
+3. 如果在dirty中找到数据，misses++
+4. 当misses大于一定次数时，将dirty的引用赋值给read，misses=0，dirty=nil，amended=false
 
 
-### context.Context
+**删除**
 
+1. 在read中定位，如果找到，则标记删除
+2. 如果没有找到，并且dirty被修改过，在dirty中删除
+
+**增(改)**
+
+1. 在read中定位，如果找到，修改值，如果被标记删除，则写入新值，并且添加到dirty中
+2. 如果在dirty中找到，修改值
+3. 否则，dirty中添加新值，如果，dirty被修改过，先全量从read同步数据到dirty中，在向dirty添加数据
+
+
+**优缺点**
+
+优点：是官方出的，是亲儿子；通过读写分离，降低锁时间来提高效率； 
+
+缺点：不适用于大量写的场景，这样会导致read map读不到数据而进一步加锁读取，同时dirty map也会一直晋升为read map，整体性能较差。 添加数据时候可能会重构dirty会造成read的遍历
+
+适用场景：大量读，少量写
+
+
+**参考**
+
+[由浅入深聊聊Golang的sync.Map](https://juejin.im/post/5d36a7cbf265da1bb47da444)
+
+
+
+
+
+
+
+
+### unsafe
 
 
 ### atomic.Value
 
 
 ### unsafe.Pointer
+
+
+
+
+### golang.org/x/time/rate
+
+使用令牌桶算法实现，没有定时器，没有令牌队列；
+
+采用了lazyload的方式，直到每次消费之前，才根据与上次获取token时间差计算更新token
+
+**原理**
+
+1. 剩余token数据 = tokens + tokensFromDuration(d)
+2. 等待时间通过durationFromTokens(n)来计算
+
+
+```golang
+// The methods AllowN, ReserveN, and WaitN consume n tokens.
+
+type Limiter struct {
+    limit Limit
+    burst int
+
+    mu     sync.Mutex
+    tokens float64
+    // last is the last time the limiter's tokens field was updated
+    last time.Time
+    // lastEvent is the latest time of a rate-limited event (past or future)
+    lastEvent time.Time
+}
+
+
+// A Reservation holds information about events that are permitted by a Limiter to happen after a delay.
+// A Reservation may be canceled, which may enable the Limiter to permit additional events.
+type Reservation struct {
+    ok        bool
+    lim       *Limiter
+    tokens    int
+    timeToAct time.Time
+    // This is the Limit at reservation time, it can change later.
+    limit Limit
+}
+```
+
+**参考**
+
+[Golang 标准库限流器 time/rate 实现剖析](https://www.cyhone.com/articles/analisys-of-golang-rate/)
 
 
 
@@ -346,10 +426,33 @@ http://btfak.com/golang/2017/02/08/golang-memory-allocate/
 
 ### 内存逃逸
 
+### time.Timer
+
+#### go1.4
+1. 每个p（processor）拥有一个timers堆，无锁
+- 在goruntine调度之前，都会检查是否有到期timer，并且优先调度
+- timer 使用 netpoll 进行驱动
+
+
+#### go1.4 before 
+1. 有锁的全局timers堆
+- 通新的goruntine timeproc驱动timer，timeproc内部通过系统sleep来等待的
+    
+
+
+
+**参考资料**
+[74 Go time.Timer 源码分析（Go1.14）](https://www.bilibili.com/video/av81849820)
+[17.2 time.* 的计时器 Timer](https://changkun.de/golang/zh-cn/part4lib/ch17other/time/)
+
+
+
+
 
 ## tools
 - go build
 - go tool compile
+- go tool trace
 - gdb
 - GODEBUG
 ```
@@ -366,6 +469,113 @@ GODEBUG=schedtrace=DURATION
 
 - select
 - switch
+
+
+### context.Context
+
+context 主要用来在 goroutine 之间传递上下文信息，包括：取消信号、超时时间、截止时间、k-v 等。它是并发安全的
+
+1. Incoming requests to a server should create a Context, and outgoing calls to servers should accept a Context. 
+2. The chain of function calls between them must propagate the Context, optionally replacing it with a derived Context created using WithCancel, WithDeadline, WithTimeout, or WithValue. 
+3. When a Context is canceled, all Contexts derived from it are also canceled.
+4. 每个Context存放一个key、value，子节点可以通过context继承列表遍历查到父context的kv
+
+
+```golang
+// A Context carries a deadline, cancelation signal, and request-scoped values
+// across API boundaries. Its methods are safe for simultaneous use by multiple
+// goroutines.
+type Context interface {
+    // Done returns a channel that is closed when this Context is canceled
+    // or times out.
+    Done() <-chan struct{}
+
+    // Err indicates why this context was canceled, after the Done channel
+    // is closed.
+    Err() error
+
+    // Deadline returns the time when this Context will be canceled, if any.
+    Deadline() (deadline time.Time, ok bool)
+
+    // Value returns the value associated with key or nil if none.
+    Value(key interface{}) interface{}
+}
+
+
+
+type emptyCtx int
+
+var (
+    background = new(emptyCtx)
+    todo       = new(emptyCtx)
+)
+
+// Background returns a non-nil, empty Context. It is never canceled, has no
+// values, and has no deadline. It is typically used by the main function,
+// initialization, and tests, and as the top-level Context for incoming
+// requests.
+func Background() Context {
+    return background
+}
+
+// TODO returns a non-nil, empty Context. Code should use context.TODO when
+// it's unclear which Context to use or it is not yet available (because the
+// surrounding function has not yet been extended to accept a Context
+// parameter).
+func TODO() Context {
+    return todo
+}
+
+
+// A canceler is a context type that can be canceled directly. The
+// implementations are *cancelCtx and *timerCtx.
+type canceler interface {
+    cancel(removeFromParent bool, err error)
+    Done() <-chan struct{}
+}
+
+// A cancelCtx can be canceled. When canceled, it also cancels any children
+// that implement canceler.
+type cancelCtx struct {
+    Context
+
+    mu       sync.Mutex            // protects following fields
+    done     chan struct{}         // created lazily, closed by first cancel call
+    children map[canceler]struct{} // set to nil by the first cancel call
+    err      error                 // set to non-nil by the first cancel call
+}
+
+// A timerCtx carries a timer and a deadline. It embeds a cancelCtx to
+// implement Done and Err. It implements cancel by stopping its timer then
+// delegating to cancelCtx.cancel.
+type timerCtx struct {
+    cancelCtx
+    timer *time.Timer // Under cancelCtx.mu.
+
+    deadline time.Time
+}
+
+// A valueCtx carries a key-value pair. It implements Value for that key and
+// delegates all other calls to the embedded Context.
+type valueCtx struct {
+    Context
+    key, val interface{}
+}
+
+
+func WithCancel(parent Context) (ctx Context, cancel CancelFunc)
+func WithDeadline(parent Context, deadline time.Time) (Context, CancelFunc)
+func WithTimeout(parent Context, timeout time.Duration) (Context, CancelFunc)
+func WithValue(parent Context, key, val interface{}) Context
+
+```
+
+
+**参考**
+
+[context](https://qcrao91.gitbook.io/go/biao-zhun-ku/context)
+
+
 
 
 ## 细节
