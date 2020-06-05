@@ -1106,3 +1106,9 @@ C++11 提供了原始字符串字面量的写法，可以在一个字符串前�
 
 
 
+
+
+### 虚函数
+<https://coolshell.cn/articles/12165.html>
+
+https://coolshell.cn/articles/12176.html

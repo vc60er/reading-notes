@@ -283,3 +283,16 @@ device of interest: 0x800010
 结果很令人满意，我们看到是进程号为31202的dd命令在对/dev/sdb进行读操作。
 
 
+
+
+
+https://www.cnblogs.com/anker/p/3271773.html
+https://www.cnblogs.com/lxmhhy/p/6212405.html
+https://www.cnblogs.com/lxmhhy/p/6214113.html
+https://liubigbin.github.io/2016/03/11/Linux-%E4%B9%8B%E5%AE%88%E6%8A%A4%E8%BF%9B%E7%A8%8B%E3%80%81%E5%83%B5%E6%AD%BB%E8%BF%9B%E7%A8%8B%E4%B8%8E%E5%AD%A4%E5%84%BF%E8%BF%9B%E7%A8%8B/
+https://michaelyou.github.io/2015/03/12/%E5%AD%A4%E5%84%BF%E8%BF%9B%E7%A8%8B%E4%B8%8E%E5%83%B5%E5%B0%B8%E8%BF%9B%E7%A8%8B/
+https://www.jianshu.com/p/7390f73ad668
+https://www.jianshu.com/p/7265be04cb98
+https://zhuanlan.zhihu.com/p/96098130
+
+

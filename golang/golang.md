@@ -7,6 +7,7 @@
 ## goroutine
 
 ### gpm
+
 **g**：goruntine
 
 **p**：processs，是一个逻辑处理单元，最终任务要交个他所绑定的m去处理
