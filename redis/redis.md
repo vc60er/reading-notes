@@ -5,11 +5,18 @@
 出于带宽考虑
 
 
+The reason is:
+* Normal heartbeat packets carry the full configuration of a node, that can be replaced in an idempotent way with the old in order to update an old config. This means they contain the slots configuration for a node, in raw form, that uses 2k of space with16k slots, but would use a prohibitive 8k of space using 65k slots.
 
 
-- [关于DNS不得不说的一些事](https://www.cnblogs.com/rjzheng/p/11395695.html)
+* At the same time it is unlikely that Redis Cluster would scale to more than 1000 mater nodes because of other design tradeoffs.
+
+So 16k was in the right range to ensure enough slots per master with a max of 1000 maters, but a small enough number to propagate the slot configuration as a raw bitmap easily. Note that in small clusters the bitmap would be hard to compress because when N is small the bitmap would have slots/N bits set that is a large percentage of bits set.
 
 
+node直接的心跳包中包含了node的slots配置信息，16k slots 使用 2k空间， 65kslots 使用8k空间
+
+最多100 个 master的时候16k slots 足够使用了，大小也是合适传播
 
 
 
@@ -75,5 +82,35 @@ map的现实
 搜索树法一般采用自平衡搜索树，包括：AVL 树，红黑树
 
 
+
+
+char* 与 sds的区别
+struct sdshdr {
+
+    // 记录 buf 数组中已使用字节的数量
+    // 等于 SDS 所保存字符串的长度
+    int len;
+
+    // 记录 buf 数组中未使用字节的数量
+    int free;
+
+    // 字节数组，用于保存字符串
+    char buf[];
+
+};
+
+free 属性的值为 0 ， 表示这个 SDS 没有分配任何未使用空间。
+len 属性的值为 5 ， 表示这个 SDS 保存了一个五字节长的字符串。
+buf 属性是一个 char 类型的数组， 数组的前五个字节分别保存了 'R' 、 'e' 、 'd' 、 'i' 、 's' 五个字符， 而最后一个字节则保存了空字符 '\0' 。
+
+
+
+
+2.2.1 常数复杂度获取字符串长度
+2.2.2 杜绝缓冲区溢出
+2.2.3 减少修改字符串时带来的内存重分配次数
+1.空间预分配
+2.惰性空间释放
+2.2.4 二进制安全
 
 
