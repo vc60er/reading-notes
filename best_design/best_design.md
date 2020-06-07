@@ -27,6 +27,8 @@ BigCache是一个优秀的内存缓存库，使用了以下方法
 ## 自动完成
 ### Auto Complete with Redis： use zset
 
+<http://oldblog.antirez.com/post/autocomplete-with-redis.html>
+
 **准备**
 
 将每个单词的所有前缀zadd 到 zset中，并且给单词结尾添加标记（\*），也zadd到zset中
@@ -85,7 +87,15 @@ Fortunately in the practice there are a lot of collisions among prefixes, so thi
 
 Query prediciton
 
+Given a prefix you want to find the first N words having this prefix ordered by frequency, that is, if I'm typing "ne" I want to see things like "netflix", "news", "new york times"
+
 Clean up stage
+
+Then using RANDOMKEY you can get a random element from time to time with a background worker, and check if it's better to delete it since it was updated a few days ago the last time.
+
+
+
+未完
 
 
 
