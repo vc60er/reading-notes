@@ -1,7 +1,9 @@
 # 优秀的设计
 
 
-## [Go开源项目BigCache如何加速并发访问以及避免高额的GC开销](https://pengrl.com/p/35302/)
+## Go开源项目BigCache如何加速并发访问以及避免高额的GC开销
+
+<https://pengrl.com/p/35302/>
 
 BigCache是一个优秀的内存缓存库，使用了以下方法
 
@@ -14,7 +16,7 @@ BigCache是一个优秀的内存缓存库，使用了以下方法
 
 
 
-## 定时起
+## 定时器
 ### 时间轮
 ### 最小堆
 
@@ -25,6 +27,7 @@ BigCache是一个优秀的内存缓存库，使用了以下方法
 
 
 ## 自动完成
+
 ### Auto Complete with Redis： use zset
 
 <http://oldblog.antirez.com/post/autocomplete-with-redis.html>
@@ -55,7 +58,7 @@ redis> zrange zset 0 -1
 
 1. 通过zrank查到关键字的位置
 2. 通过zrange 查询与之相关的词汇列表
-3. 过滤掉没有解决标记（\*）词汇
+3. 过滤掉没有结尾标记（\*）词汇
 
 例如：
 
