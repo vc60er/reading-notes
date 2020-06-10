@@ -114,3 +114,16 @@ buf 属性是一个 char 类型的数组， 数组的前五个字节分别保存
 2.2.4 二进制安全
 
 
+
+
+
+调优：
+<https://www.jianshu.com/p/44712ff0528d>
+<https://juejin.im/post/5e7724be51882549315fd74b>
+<https://zhuanlan.zhihu.com/p/61053939>
+<https://yq.aliyun.com/articles/680237>
+<https://zhuanlan.zhihu.com/p/41228196>
+<https://www.bangbangde.com/post/gossip.html>
+<https://juejin.im/post/5dd65d676fb9a05a9a22ac6f>
+
+
