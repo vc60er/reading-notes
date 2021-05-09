@@ -1,7 +1,49 @@
 # golang
 
 
-[toc]
+<!-- MarkdownTOC autolink="true" -->
+
+- [goroutine](#goroutine)
+    - [gpm](#gpm)
+    - [gm](#gm)
+    - [netpoller](#netpoller)
+- [基本类型](#%E5%9F%BA%E6%9C%AC%E7%B1%BB%E5%9E%8B)
+    - [channel](#channel)
+    - [map](#map)
+    - [interface](#interface)
+    - [slice](#slice)
+    - [array](#array)
+    - [select](#select)
+    - [defer](#defer)
+- [标准库](#%E6%A0%87%E5%87%86%E5%BA%93)
+    - [sync.Map](#syncmap)
+    - [unsafe](#unsafe)
+    - [atomic.Value](#atomicvalue)
+    - [unsafe.Pointer](#unsafepointer)
+    - [golang.org/x/time/rate](#golangorgxtimerate)
+- [内存](#%E5%86%85%E5%AD%98)
+    - [gc：并发三色标记，写屏障，并发清除](#gc%EF%BC%9A%E5%B9%B6%E5%8F%91%E4%B8%89%E8%89%B2%E6%A0%87%E8%AE%B0%EF%BC%8C%E5%86%99%E5%B1%8F%E9%9A%9C%EF%BC%8C%E5%B9%B6%E5%8F%91%E6%B8%85%E9%99%A4)
+    - [memory allocation](#memory-allocation)
+    - [内存逃逸](#%E5%86%85%E5%AD%98%E9%80%83%E9%80%B8)
+    - [time.Timer](#timetimer)
+        - [go1.4](#go14)
+        - [go1.4 before](#go14-before)
+- [tools](#tools)
+- [基本用法](#%E5%9F%BA%E6%9C%AC%E7%94%A8%E6%B3%95)
+    - [context.Context](#contextcontext)
+- [细节](#%E7%BB%86%E8%8A%82)
+- [常问问题](#%E5%B8%B8%E9%97%AE%E9%97%AE%E9%A2%98)
+- [新变化](#%E6%96%B0%E5%8F%98%E5%8C%96)
+- [web框架](#web%E6%A1%86%E6%9E%B6)
+    - [gin](#gin)
+    - [fasthttp](#fasthttp)
+- [参考](#%E5%8F%82%E8%80%83)
+- [TODO](#todo)
+
+<!-- /MarkdownTOC -->
+
+
+
 
 
 ## goroutine
