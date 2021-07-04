@@ -6,12 +6,14 @@
 
 - [全局唯一](#%E5%85%A8%E5%B1%80%E5%94%AF%E4%B8%80)
     - [UUID](#uuid)
-    - [SnowFlake](#snowflake)
 - [全局唯一，趋势有序](#%E5%85%A8%E5%B1%80%E5%94%AF%E4%B8%80%EF%BC%8C%E8%B6%8B%E5%8A%BF%E6%9C%89%E5%BA%8F)
+    - [SnowFlake](#snowflake)
     - [mysql自增id](#mysql%E8%87%AA%E5%A2%9Eid)
-    - [美团Leaf](#%E7%BE%8E%E5%9B%A2leaf)
+    - [美团Leaf-segment](#%E7%BE%8E%E5%9B%A2leaf-segment)
     - [滴滴Tinyid](#%E6%BB%B4%E6%BB%B4tinyid)
     - [百度UidGenerator](#%E7%99%BE%E5%BA%A6uidgenerator)
+        - [DefaultUidGenerator](#defaultuidgenerator)
+        - [CachedUidGenerator](#cacheduidgenerator)
 - [全局唯一，局部有序](#%E5%85%A8%E5%B1%80%E5%94%AF%E4%B8%80%EF%BC%8C%E5%B1%80%E9%83%A8%E6%9C%89%E5%BA%8F)
     - [微信msgid](#%E5%BE%AE%E4%BF%A1msgid)
     - [美团Leaf-snowflake](#%E7%BE%8E%E5%9B%A2leaf-snowflake)
@@ -24,7 +26,6 @@
 
 UUID（Universally Unique Identifier）的标准型式包含32个16进制数字，以连字号分为五段，形式为8-4-4-4-12的36个字符，示例：550e8400-e29b-41d4-a716-446655440000，到目前为止业界一共有5种方式生成UUID，详情见IETF发布的UUID规范：[《A Universally Unique IDentifier (UUID) URN Namespace》](https://www.ietf.org/rfc/rfc4122.txt)。
 
-todo
 
 
 **缺点**
@@ -32,33 +33,39 @@ todo
 - 不易于存储：UUID太长，16字节128位，通常以36长度的字符串表示，很多场景不适用；
 - 信息不安全：基于MAC地址生成UUID的算法可能会造成MAC地址泄露，这个漏洞曾被用于寻找梅丽莎病毒的制作者位置。
 
+
+
+## 全局唯一，趋势有序
+
+趋势有序，是指较小的时间范围内看，可能不是递增的，但是在较大的时间范围内、总体上来看是递增的。
+
 ### SnowFlake
 
-SnowFlake 算法，是 Twitter 开源的分布式 ID 生成算法。其核心思想就是：使用一个 64 bit 的 long 型的数字作为全局唯一 ID。
+SnowFlake算法，是Twitter开源的分布式ID生成算法。其核心思想就是：使用一个64bit的 long型的数字作为全局唯一ID。
 
 
 **实现方式**
 
-这 64 个 bit 中，其中 1 个 bit 是不用的，然后用其中的 41 bit 作为毫秒数，用 10 bit 作为工作机器 ID，12 bit 作为序列号。
+这64个bit中，其中1个bit是不用的，然后用其中的41bit作为毫秒数，用10bit作为工作机器ID，12bit作为序列号。
 
 SnowFlake的ID构成：
-![image](snowflake.png)
+![image](pic/snowflake.png)
 
-① 1 bit：是不用的，为啥呢？
+1. bit：是不用的，为啥呢？
 
-因为二进制里第一个 bit 为如果是 1，那么都是负数，但是我们生成的 ID 都是正数，所以第一个 bit 统一都是 0。
+    因为二进制里第一个bit为如果是1，那么都是负数，但是我们生成的ID都是正数，所以第一个bit 统一都是0。
 
-② 41 bit：表示的是时间戳，单位是毫秒。
+2. 41bit：表示的是时间戳，单位是毫秒。
 
-41 bit 可以表示的数字多达 2^41 - 1，也就是可以标识 2 ^ 41 - 1 个毫秒值，换算成年就是表示 69 年的时间。
+    41bit可以表示的数字多达2^41-1，也就是可以标识2^41-1个毫秒值，换算成年就是表示69年的时间。
 
-③ 10 bit：记录工作机器 ID，代表的是这个服务最多可以部署在 2^10 台机器上，也就是 1024 台机器。
+3. 10 bit：记录工作机器 ID，代表的是这个服务最多可以部署在 2^10 台机器上，也就是1024 台机器。
 
-但是 10 bit 里 5 个 bit 代表机房 id，5 个 bit 代表机器 ID。意思就是最多代表 2 ^ 5 个机房（32 个机房），每个机房里可以代表 2 ^ 5 个机器（32 台机器）。
+    但是10bit里5个bit代表机房id，5个bit代表机器ID。意思就是最多代表2^5个机房（32个机房），每个机房里可以代表2^5个机器（32台机器）。
 
-④12 bit：这个是用来记录同一个毫秒内产生的不同 ID。
+4. 12 bit：这个是用来记录同一个毫秒内产生的不同 ID。
 
-12 bit 可以代表的最大正整数是 2 ^ 12 - 1 = 4096，也就是说可以用这个 12 bit 代表的数字来区分同一个毫秒内的 4096 个不同的 ID。理论上snowflake方案的QPS约为409.6w/s，这种分配方式可以保证在任何一个IDC的任何一台机器在任意毫秒内生成的ID都是不同的。
+    12 bit 可以代表的最大正整数是 2 ^ 12 - 1 = 4096，也就是说可以用这个 12 bit 代表的数字来区分同一个毫秒内的 4096 个不同的 ID。理论上snowflake方案的QPS约为409.6w/s，这种分配方式可以保证在任何一个IDC的任何一台机器在任意毫秒内生成的ID都是不同的。
 
 
 **缺点**
@@ -67,8 +74,6 @@ SnowFlake的ID构成：
 
 
 
-
-## 全局唯一，趋势有序
 
 ### mysql自增id
 
@@ -126,35 +131,27 @@ auto-increment-offset = 2
 - <https://code.flickr.net/2010/02/08/ticket-servers-distributed-unique-primary-keys-on-the-cheap/>
 
 
-
-
-### 美团Leaf
+### 美团Leaf-segment
 
 
 **原理**
 
-Leaf服务预先从db中获取一个号段，然后在内存中将此号段进行分配，Leaf可以部署多个，多个Lefa先后获区了不同的号段，所以，最总分配出的结果不是严格有序，而是趋势有序的。
+Leaf服务预先从db中获取一个号段，然后在内存中将此号段进行分配，Leaf可以部署多个，多个Leaf先后获取了不同的号段，所以，最总分配出的结果不是严格有序，而是趋势有序的。
 
 数据库表设计如下：
 
-```
-+-------------+--------------+------+-----+-------------------+-----------------------------+
-| Field       | Type         | Null | Key | Default           | Extra                       |
-+-------------+--------------+------+-----+-------------------+-----------------------------+
-| biz_tag     | varchar(128) | NO   | PRI |                   |                             |
-| max_id      | bigint(20)   | NO   |     | 1                 |                             |
-| step        | int(11)      | NO   |     | NULL              |                             |
-| desc        | varchar(256) | YES  |     | NULL              |                             |
-| update_time | timestamp    | NO   |     | CURRENT_TIMESTAMP | on update CURRENT_TIMESTAMP |
-+-------------+--------------+------+-----+-------------------+-----------------------------+
-```
+|biz_tag|max_id|step|desc|update_time|
+|-------|------|----|----|-----------|
+
 
 
 重要字段说明：
 
-    biz_tag：用来区分业务；
-    max_id：表示该biz_tag目前所被分配的ID号段的最大值；
-    step：表示每次分配的号段长度。
+```
+biz_tag：用来区分业务；
+max_id：表示该biz_tag目前所被分配的ID号段的最大值；
+step：表示每次分配的号段长度。
+```
 
 
 Leaf获取号段的过程：
@@ -166,20 +163,139 @@ SELECT tag, max_id, step FROM table WHERE biz_tag=xxx
 Commit
 ```
 
-**优化**
 
-预获取号段的逻辑，可以在当前id快要用完的时候，提前获取。
+**特点**
 
-**高可用**
-
-依赖于db的可用性
 
 
 ### 滴滴Tinyid
+
+Tinyid是滴滴用Java开发的一款分布式id生成系统，基于数据库号段算法实现。
+
+
+**原理**
+
+数据库表设计如下：
+
+|id|biz_type|max_id|step|delta|remainder|version|
+|--|--------|------|----|-----|---------|-------|
+
+
+如上表所示：
+
+```
+1）我们增加了biz_type，这个代表业务类型，不同的业务的id隔离；
+2）max_id则是上面的end_id了，代表当前最大的可用id；
+3）step代表号段的长度，可以根据每个业务的qps来设置一个合理的长度；
+4）version是一个乐观锁，每次更新都加上version，能够保证并发更新的正确性 。
+5) delta代表id每次的增量，表示，号段内分发的id的间隔
+6) remainder代表余数，表示，号段内分发id的初始偏移
+```
+
+那么我们可以通过如下几个步骤来获取一个可用的号段：
+
+```
+A、查询当前的max_id信息：select id, biz_type, max_id, step, version from tiny_id_info where biz_type='test';
+B、计算新的max_id: new_max_id = max_id + step；
+C、更新DB中的max_id：update tiny_id_info set max_id=#{new_max_id} , verison=version+1 where id=#{id} and max_id=#{max_id} and version=#{version}；
+D、如果更新成功，则可用号段获取成功，新的可用号段为(max_id, new_max_id]；
+E、如果更新失败，则号段可能被其他线程获取，回到步骤A，进行重试。
+```
+
+
+
+**特点**
+
+- 通过delta和remainder字段可以实现数据库的横向扩容，增强了系统的并发能力
+- tinyid-client可以一次获取一批id，然后在本地自行分配，减轻了系统压力，提高对的qps
+
+
+**参考资料**
+
+<http://www.52im.net/thread-3129-1-1.html>
+
+
+
 ### 百度UidGenerator
 
 
+#### DefaultUidGenerator
 
+
+**原理**
+
+对SnowFlake算法进行了改进，支持自定义时间戳、工作机器id和序列号等各部分的位数。
+
+![image](pic/baiduuid.png)
+
+
+1. sign(1bit)：固定1bit符号标识，即生成的UID为正数。
+2. delta seconds (28 bits)：当前时间，相对于时间基点"2016-05-20"的增量值，单位：秒，最多可支持约8.7年（注意：(a)这里的单位是秒，而不是毫秒！ (b)注意这里的用词，是“最多”可支持8.7年，为什么是“最多”，后面会讲）。
+3. worker id (22 bits)：机器id，最多可支持约420w次机器启动。内置实现为在启动时由数据库分配，默认分配策略为用后即弃，后续可提供复用策略。服务每次启动时候
+4. sequence (13 bits)：每秒下的并发序列，13 bits可支持每秒8192个并发（注意下这个地方，默认支持qps最大为8192个）。
+
+
+
+
+服务启动的时候向mysql表WORKER_NODE中插入数据，使用数据的id作为workerid
+
+```sql
+CREATE TABLE WORKER_NODE
+(
+ID BIGINT NOT NULL AUTO_INCREMENT COMMENT 'auto increment id',
+HOST_NAME VARCHAR(64) NOT NULL COMMENT 'host name',
+PORT VARCHAR(64) NOT NULL COMMENT 'port',
+TYPE INT NOT NULL COMMENT 'node type: ACTUAL or CONTAINER',
+LAUNCH_DATE DATE NOT NULL COMMENT 'launch date',
+MODIFIED TIMESTAMP NOT NULL COMMENT 'modified time',
+CREATED TIMESTAMP NOT NULL COMMENT 'created time',
+PRIMARY KEY(ID)
+)
+COMMENT='DB WorkerID Assigner for UID Generator',ENGINE = INNODB;
+```
+
+
+
+核心代码如下，几个实现的关键点：
+
+```
+a. synchronized保证线程安全；
+b. 如果时间有任何的回拨，那么直接抛出异常；
+c. 如果当前时间和上一次是同一秒时间，那么sequence自增。如果同一秒内自增值超过2^13-1，那么就会自旋等待下一秒（getNextSecond）；
+d. 如果是新的一秒，那么sequence重新从0开始。
+```
+
+
+**特点**
+
+- workerid是每次worker启动的时候，通过mysql产生，所以，workerid每次启动之后都不一样
+- id分配过程中，会检查时钟是否回退，如果回退，则返回错误
+- 因为workerid每次服务启动时候都是变的，所以，在服务退出之后、启动之前，时钟发生了变化，也不会导致产生重复的id
+- 使用锁，降低了系统系能
+
+
+
+
+
+#### CachedUidGenerator
+
+
+CachedUidGenerator是DefaultUidGenerator的重要改进实现。它的核心利用了RingBuffer，它本质上是一个数组，数组中每个项被称为slot。CachedUidGenerator设计了两个RingBuffer，一个保存唯一ID，一个保存flag。RingBuffer的尺寸是2^n，n必须是正整数。
+
+简要的小结一下，CachedUidGenerator方式主要通过采取如下一些措施和方案规避了时钟回拨问题和增强唯一性：
+
+1. 自增列：CachedUidGenerator的workerId在实例每次重启时初始化，且就是数据库的自增ID，从而完美的实现每个实例获取到的workerId不会有任何冲突；
+2. RingBuffer：CachedUidGenerator不再在每次取ID时都实时计算分布式ID，而是利用RingBuffer数据结构预先生成若干个分布式ID并保存；
+3. 时间递增：传统的SnowFlake算法实现都是通过System.currentTimeMillis()来获取时间并与上一次时间进行比较，这样的实现严重依赖服务器的时间。而CachedUidGenerator的时间类型是AtomicLong，且通过incrementAndGet()方法获取下一次的时间，从而脱离了对服务器时间的依赖，也就不会有时钟回拨的问题（这种做法也有一个小问题，即分布式ID中的时间信息可能并不是这个ID真正产生的时间点，例如：获取的某分布式ID的值为3200169789968523265，它的反解析结果为{"timestamp":"2019-05-02 23:26:39","workerId":"21","sequence":"1"}，但是这个ID可能并不是在"2019-05-02 23:26:39"这个时间产生的）。
+
+
+
+
+**参考资料**
+
+- <http://www.52im.net/thread-2953-1-1.html>
+- <https://www.jianshu.com/p/2f7f5994f0b4>
+- <https://www.cnblogs.com/yeyang/p/10226284.html>
 
 ## 全局唯一，局部有序
 
@@ -254,6 +370,7 @@ uid对应的分配服务，可能发生变动，比如，主从切块，认为�
     等待n秒的意义，在于保证uid的老服务已经卸载了他，即使，他的老服务服务读取到最新的配置，老服务也会因为读取不到配置而终止服务。
 
 3. 仲裁服务是如何认定一个分配服务不可用的？
+
     todo
 
 
