@@ -592,7 +592,7 @@ todo:
 - timer 使用 netpoll 进行驱动
 
 
-#### go1.4 before 
+#### go1.4 before
 1. 有锁的全局timers堆
 - 通新的goruntine timeproc驱动timer，timeproc内部通过系统sleep来等待的
     
