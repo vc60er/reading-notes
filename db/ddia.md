@@ -165,23 +165,41 @@ todo pic
 
 问题:
 
-todo
+应用程序从数据库读取某些值，更加应用逻辑做出修改，然后写回新值。在并发环境下，可能出现第一个写入操作被丢失（被覆盖）的问题，比如：两个线程thd1，thd2，都去读取然后修改数据a的值, a=0
 
-原子操作:
+```
+        a=0         a=1          a=1
+----------------------------------------------------------------
+thd1:  read a      a=a+1       write a
+thd2:  read a      a=a+1                    write a 
+----------------------------------------------------------------
+        a=0         a=1                       a=1
+```
 
-set value=value+x
+两个线程都对a+1之后，预期结果应该是a=2，可是上面的结果会是a=1。其中thd1写入的值，并没个被thd2读取到，进而thd2覆盖了thd1的值，相当于thd1写入的值被丢掉了
 
-显示加锁:
+>该问题是并发带来的问题，需要在应用层解决
 
+
+解决办法:
+
+- 原子操作:
+```sql
+update t set value=value+x where id=x
+```
+
+- 显示加锁:
+```sql
 begin transaction
-select \* from t where id=x for update
+select * from t where id=x for update
 update t set a=x
 commit
+```
 
-原子比较设置:
-
+- 原子比较设置:
+```sql
 update t set a=x+1 where a=x
-
+```
 
 
 #### 写倾斜与幻读
@@ -203,7 +221,7 @@ t2: get a b   if(a+b==2)  set b=0   commit
 
 ```
 t1: ret=get x    if(ret=null)   set x=1
-t2: ret=get x    if(ret=null)   set x=1
+t2: ret=get x    if(ret=null)   set x=2
 ```
 
 写倾斜：既不是脏写，也不是更新丢失，两个事务更新的是两个不同的对象
@@ -211,8 +229,9 @@ t2: ret=get x    if(ret=null)   set x=1
 
 解决办法:
 
-todo
-
+- 显示加锁: 使用select for update的方法显示加锁，能够解决两次update导致的幻读问题
+- 实体化冲突: 提前实体化(插入数据)会出现竞争的key，将insert转化为update，从而将幻读问题转话为针对数据库具体行的锁冲突问题，能够解决两次insert导致的幻读问题
+- 串行化隔离:
 
 
 ### 串行化
