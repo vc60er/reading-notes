@@ -81,7 +81,8 @@
 
 一定时间内没收到包的ack后，则认为此包丢失，会重传丢失包及其后续的所有包
 
-这种实现方式需要等待一个timeout时间，这个时间可能会很长，会对效率造成很大影响。
+这种实现方式需要等待一个timeout时间，如果这个时间较长，会对效率造成很大影响，如果较短，则在网络缓慢的啥时候误报率较高。超时时间的计算见“TCP的RTT算法”
+
 
 ### 快速重传机制
 
@@ -116,10 +117,6 @@ todo
 
 RTT——Round Trip Time，也就是一个数据包从发出去到回来的时间，tcp通过计算RTT来获得重传的超时时间RTO（Retransmission TimeOut）
 
-疑问：
-
-- 从前面的TCP重传机制我们知道Timeout的设置对于重传非常重要。快速重传不需要吧。
-- rtt=?rto
 
 #### 经典算法
 
@@ -143,7 +140,7 @@ RTT——Round Trip Time，也就是一个数据包从发出去到回来的时�
 
 #### Karn/Partridge 算法
 
-经典算法中，对发生重传的两种情况，即，真丢包，假丢包，算计的rtt不正确，真丢包计算大了，假丢包计算小了。
+经典算法中，对发生重传的两种情况，即，真丢包和假丢包，算计的rtt不正确。真丢包计算大了，假丢包计算小了。
 
 Karn / Partridge算法的解决办法是：
 
@@ -173,7 +170,7 @@ RTO= µ * SRTT + ∂ *DevRTT —— 神一样的公式
 
 ### TCP滑动窗口-流控
 
-为了实现可靠的传输，tcp需要估算出网络大的实际带宽，预防过载的数据传输导致拥塞及丢包。
+为了实现可靠的传输，tcp需要估算出网络大的实际带宽，预防传输数据过载的时候导致拥塞及丢包。
 
 首先介绍一下tcp的发送队列和接收队列:
 
@@ -268,7 +265,7 @@ LastByteRcved: 收到的包的最后一个位置
 1. 连接建好的开始先初始化cwnd = 1，表明可以传一个MSS大小的数据。
 2. 每当收到一个ACK，cwnd++; 呈线性上升
 3. 每当过了一个RTT，cwnd = cwnd\*2; 呈指数让升
-4. 还有一个ssthresh（slow start threshold），是一个上限，当cwnd >= ssthresh时，就会进入“拥塞避免算法”（后面会说这个算法）
+4. 还有一个ssthresh（slow start threshold），是一个上限，当cwnd >= ssthresh时，就会进入“拥塞避免算法”
 
 
 ![pic](https://coolshell.cn/wp-content/uploads/2014/05/tcp.slow_.start_.jpg)
@@ -278,8 +275,15 @@ LastByteRcved: 收到的包的最后一个位置
 疑问：
 
 1. 收到ack和过了RTT是同一件事情？
-2. cwnd？
-3. MSS?
+
+todo
+
+2. cwnd和wnd是的区别是什么?
+	- 滑动窗口（wnd）是接收端接收数据的能力
+	- 拥塞窗口（cwnd）是传输过程中的传输能力
+	- LastByteSent-LastByteAcked<=min(wnd,cwnd)
+	- https://www.zhihu.com/question/264518499/answer/315348958
+
 
 
 
@@ -343,7 +347,7 @@ FACK全称Forward Acknowledgment,FACK用来做重传过程中的拥塞流控。
 - 这个算法会把SACK中最大的Sequence Number 保存在snd.fack这个变量中，snd.fack的更新由ack带秋，如果网络一切安好则和snd.una一样（snd.una就是还没有收到ack的地方，也就是前面sliding window里的category #2的第一个地方）
 - 然后定义一个awnd = snd.nxt – snd.fack（snd.nxt指向发送端sliding window中正在要被发送的地方——前面sliding windows图示的category#3第一个位置），这样awnd的意思就是在网络上的数据。（所谓awnd意为：actual quantity of data outstanding in the network）
 - 如果需要重传数据，那么，awnd = snd.nxt – snd.fack + retran_data，也就是说，awnd是传出去的数据 + 重传的数据。
-- 然后触发Fast Recovery 的条件是： ( ( snd.fack – snd.una ) > (3*MSS) ) || (dupacks == 3) ) 。这样一来，就不需要等到3个duplicated acks才重传，而是只要sack中的最大的一个数据和ack的数据比较长了（3个MSS），那就触发重传。在整个重传过程中cwnd不变。直到当第一次丢包的snd.nxt<=snd.una（也就是重传的数据都被确认了），然后进来拥塞避免机制——cwnd线性上涨。
+- 然后触发Fast Recovery 的条件是： ( ( snd.fack – snd.una ) > (3\*MSS) ) || (dupacks == 3) ) 。这样一来，就不需要等到3个duplicated acks才重传，而是只要sack中的最大的一个数据和ack的数据比较长了（3个MSS），那就触发重传。在整个重传过程中cwnd不变。直到当第一次丢包的snd.nxt<=snd.una（也就是重传的数据都被确认了），然后进来拥塞避免机制——cwnd线性上涨。
 
 
 
