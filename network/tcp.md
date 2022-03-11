@@ -262,7 +262,7 @@ LastByteRcved: 收到的包的最后一个位置
 
 慢启动的算法如下(cwnd全称Congestion Window)：
 
-1. 连接建好的开始先初始化cwnd = 1，表明可以传一个MSS大小的数据。
+1. 连接建好的开始先初始化cwnd = 1\*MSS，表明可以传一个MSS大小的数据。
 2. 每当收到一个ACK，cwnd++; 呈线性上升
 3. 每当过了一个RTT，cwnd = cwnd\*2; 呈指数让升
 4. 还有一个ssthresh（slow start threshold），是一个上限，当cwnd >= ssthresh时，就会进入“拥塞避免算法”
@@ -383,3 +383,4 @@ westwood采用和Reno相同的慢启动算法、拥塞避免算法。westwood的
 - <https://coolshell.cn/articles/11564.html>
 - <https://coolshell.cn/articles/11609.html>
 - <https://zh.wikipedia.org/wiki/TCP%E6%8B%A5%E5%A1%9E%E6%8E%A7%E5%88%B6>
+- <https://datatracker.ietf.org/doc/html/rfc5681>
