@@ -1,3 +1,4 @@
+
 # https
 
 ## 17 传输层安全
@@ -6,11 +7,13 @@
 
 #### 17.2.1 TLS体系结构
 
-tls包括两层协议: 记录协议为上次提供了基本的安全服务，还有三个高层协议握手协议，修改密码规范协议协议，报警报警协议。心跳协议在独立的rfc中。
+tls由两层协议组成, 如下图所示：
+
+记录协议为上层提供了基本的安全服务，握手协议，修改密码规范协议，报警报警协议，是记录协议之上的三个高层协议，心跳协议在独立的rfc中
 
 ```
 |-------------------------------------------|
-|握手协议|修改密码规范协议|警报协议|http|心跳协议|
+|握手协议|修改密码规范协议|警报协议| http|心跳协议|
 |-------------------------------------------|
 |           记录协议                         |
 |-------------------------------------------|
@@ -20,30 +23,31 @@ tls包括两层协议: 记录协议为上次提供了基本的安全服务，还
 |-------------------------------------------|
 ```
 
-两个重要的概念:
-
-- 连接: 表示对等网络关系，且连接是短暂的，每个连接与一个会话相关
-- 会话: 是一个客户端与一个服务端之间的关联，会话是通过握手协议建立的，定义了一组多个连接共享的密码安全参数
 
 
-会话状态的参数:
+SSL协议中的两个重要概念是SSL会话和SSL连接，按照规范文件，它们的定义如下:
 
-- 会话表示
-- 对整体证书
-- 压缩方法
-- 密码规范
-- 主密钥
-- 可恢复性
+- 连接: 连接是一种能够提供合适服务类型(按照OSI分层模型定义)的传输。对 SSL来说，这种连接是点对点的关系而且都是短暂的。每一条连接都与一个会话相关联。
+- 会话: SSL会话是客户与服务器之间的一种关联。会话是通过握手协议来创建的。所有会话都定义了密码安全参数集合，这些参数可以在多个安全连接之间共享。会话通常用来减少每次连接建立安全参数的昂贵协商费用。
 
-连接状态的参数:
 
-- 服务器和客户端随机数
-- 服务器写MAC密码
-- 客户端写MAC密码
-- 服务器写密钥
-- 客户端写密钥
-- 初始化向量
-- 序列号
+会话状态由下列参数定义:
+- 会话标识符: 由服务器产生的用于标识活动或可恢复的会话状态的一个任意字节序列。
+- 对等实体证书: 对等实体的X509v3证书。会话状态的这一元素可以为空。
+- 压缩方法: 加密前用于压缩数据的算法。
+- 密码规格: 包括大块数据加密算法(例如空算法、AES算法等)规格和用于计算 MAC的散列算法(如MD5或SHA-1算法等)规格。它还定义了一些密码属性，例如散列值长度等。
+- 主密钥: 客户端和服务器共享的48字节的会话密钥。
+- 可恢复性: 表明会话是否可被用于初始化新连接的标志。
+
+
+接状态由下列参数定义:
+- 服务器和客户端随机数: 由服务器和客户端为每个连接选定的字节串。
+- 服务器写MAC密钥: 服务器发送数据时用于计算MAC值的密钥。
+- 客户端写MAC密钥: 客户端发送数据时用于计算MAC值的密钥。
+- 服务器写密钥: 服务器用于加密数据、客户端用于解密数据的加密密钥。
+- 客户端写密钥: 客户端用于加密数据、服务器用于解密数据的对称加密密钥。
+- 初始化向量: 在CBC模式中，需要为每个密钥配置一个初始化向量(IV)。最初的 IV值由SSL的握手协议初始化。之后，每个记录的最后一个密码块被保存，以作为后续记录的IV。
+- 序列号: 建立连接的各方为每条连接发送和接收的消息维护单独的序列号。当一方发送或接收改变密码规格的消息时，相应的序列号应置零。序列号的值不能超过2^64-1。
 
 
 
@@ -61,16 +65,39 @@ tls包括两层协议: 记录协议为上次提供了基本的安全服务，还
 c_type: 内容类型
 m_ver: 主版本号
 s_ver: 从版本号
-cmpr_length: 压缩长度
+cmpr_length: 压缩后的长度
 ```
 
-主要处理过程:
+SSL记录协议为SSL连接提供如下两种服务:
+
+- 机密性: 握手协议定义一个可以用于加密SSL载荷的传统加密共享密钥。
+- 消息完整性: 握手协议还定义一个用于产生消息认证码(MAC)的共享密钥。
+
+数据处理流程：
 
 应用数据 -> 分块 -> 压缩 -> 添加MAC -> 加密 -> 添加tls记录头 -> 写入tcp socket
 
-每个步骤的细节:
+![pic](tls1.png)
 
-todo
+MAC的计算方式：
+```
+hash(MAC_write_secret || pad_2 || 
+	hash(MAC_write_secret || pad_1 || seq_num || 
+	SSLCompressed.type ||
+	SSLCompressed.length || SSLCompressed.fragment))
+
+其中：
+||=串接;
+MAC_write_secret=共享密钥;
+hash=散列算法(MD5或SHA-1);
+pad_1=字节0x36(00110110)的重复。对MD5算法重复48次(384比特)，对SHA-1算法重复40次(320比特);
+pad_2=字节0x5C(01011100)的重复。对MD5算法重复48次，对SHA-1算法重复40次;
+seq_num=消息的序列号;
+SSLCompressed.type=处理当前数据块的高层协议; SSLCompressed.length=压缩后数据块的长度;
+SSLCompressed.fragment=压缩后的数据块(如果没有进行压缩，则为明文块)。
+
+```
+
 
 
 ##### 握手协议
@@ -81,6 +108,8 @@ todo
 |type    |length                  |content  |
 ```
 
+SSL最复杂的部分是握手协议。这一协议允许客户端和服务器相互认证，并协商加密和MAC算法，以及用于保护数据使用的密钥通过SSL记录传送。握手协议在任何应用数据被传输之前使用。
+
 握手过程:
 
 ```plantuml
@@ -88,7 +117,7 @@ todo
 
 == 阶段1 ==
 client -> server: client_hello(版本号，随机数，会话标识，密码组，压缩方法)
-server -> client: client_hello(版本号，随机数，会话标识，密码组，压缩方法)
+server -> client: server_hello(版本号，随机数，会话标识，密码组，压缩方法)
 == 阶段2 ==
 server -> client: certificate(X.509v3证书链)
 server -> client: server_key_exchange(参数，签名)
@@ -110,7 +139,7 @@ server -> client: finished
 
 ###### 阶段1: 建立安全功能
 
-建立安全功能，包括协议版本，回话标识，密码套件，压缩方法和初始随机数
+发起逻辑连接并建立与之关联的安全能力，共享双方能力说明，密钥交换算法和密码规格协商
 
 
 参数解释:
@@ -118,12 +147,42 @@ server -> client: finished
 - 版本: 客户端所支持的最高tls版本
 - 随机数: 由客户端客户端生成的随机数结构，用32位时间戳和一个由安全随机数生成器生成的28字节随机数组成
 - 会话标识: 一个变长的会话标识，非0值表示，更新现有连接的参数，或为此会话创建一个新的连接，0值再次会话上创建新的连接
-- 密码组: 按优先级到的降序排列的，客户端支持的密码算法列表，列表中的每个元素定义了一个密码交换算法和密码规格（ChiperSpec）
+- 密码套件: 按优先级到的降序排列的，客户端支持的密码算法列表，列表中的每个元素（即每个密码套件）定义了一个密钥交换算法和密码规格（ChiperSpec），下文详细描述。
+- 压缩方法: 客户端支持的压缩方法列表
 
-	密码交换算法包括：RSA，固定Diffie-Hellman，瞬时Diffie-Hellman，匿名Diffie-Hellman <br>
-	密码规格包括：密码算法（RC4，RC2，DES，3DES，DES40，或者IDEA），MAC算法（MD5、SHA-1），密码类型（流、块），可否出口，散列长度，密钥材料，IV大小
 
-- 压缩方法: 一个客户端支持的压缩方法列表
+密钥交换算法包括：
+
+- RSA: 用接收者的RSA公钥加密的密钥。这里必须要有一个接收者的可用公钥证书。
+- 
+？？：是否需要客户端的证书
+
+- 固定Diffie-Hellman: 这是一个Diffie-Hellman密钥交换过程，其中服务器证书中包含的公钥参数由认证机构(Certificationauthority，CA)签发。也就是说，公钥证书包含Diffie-Hellman公钥参数。客户端可以通过证书提供其公钥参数(如果需要对客户端认证)，也可以通过密钥交换消息提供其公钥参数。使用固定的公钥参数和Diffie-Hellman算法进行计算将导致双方产生固定密钥。
+
+>双方都在证书中放置Diffie-Hellman的公钥，通过证书交换完成Hellman公钥的交换，这样带来的问题是：Hellman公私钥都是固定的，导致计算出来的共享密钥也是相同，存在共享密钥的泄漏的风险
+
+- 暂态Diffie-Hellman: 这种技术用于创建暂态(临时或一次性)密钥。在这种情况下，Diffie-Hellman公钥通过使用发送者的RSA私钥或DSS密钥的方式被交换和签名。接收者可以用相应的公钥验证签名。证书用于认证公钥。这种方式似乎是三种 Diffie-Hellman密钥交换方式中最安全的一种，因为它最终将获得一个临时的、被认证的密钥。
+
+>发送者对Hellman公钥用RSA的私钥签名，然后交换，接收者用RSA公钥验证签名
+
+- 匿名Diffie-Hellman(Anonymous Diffie-Hellman): 使用基本Diffie-Hellman密钥交换方案，且不进行认证。也就是说，双方发送自己的Diffie-Hellman参数给对方且不进行认证。这种方法容易受到“中间人攻击法”的攻击，其中攻击者与双方都进行匿名Diffie-Hellman密钥交换。
+
+>直接交换Hellman公钥，存在中间人攻击的风险
+
+- Fortezza: 这种技术专为Fortezza方案而定义。
+
+？？：客户端的证书从哪里来
+
+
+密码规格包括下面这些域:
+
+- 密码算法: 可以是前面提到的算法中的任何一种: RC4、RC2、DES、3DES、DES40、IDEA或Fortezza。
+- MAC算法: MD5和SHA-1。
+- 密码类型: 流密码或分组密码。
+- 可否出口: 可以或不可以。
+- 散列长度: 016(用于MD5)或20(用于SHA-1)字节。
+- 密钥材料: 字节序列(其中包含用于产生写密钥的数据)。
+- IV大小: 密码分组连接(CBC)加密模式中初始向量的大小。
 
 
 
@@ -131,33 +190,61 @@ server -> client: finished
 
 服务端发送证书，密钥交换，请求证书，服务端发出问候，消息阶段结束信号
 
+各个消息用途说明：
 
-第二阶段中各个消息发送的条件：
+certificate(X.509v3证书链)：向客户端发送证书，使用匿名Diffie-Hellman算法的情况不需要此过程
+server_key_exchange(参数，签名)：密钥交换，使用固定Diffie-Hellman，或者RSA算法的情况不需要此过程，参数和签名下文详细描述
+certificat_request(证书类型，认证机构)：请求客户端证书，使用匿名Diffie-Hellman算法的情况不需要此过程，证书类型指定了公钥算法及用法
+server_hello_done：服务端的hello及相应消息已经结束
 
-- certificate: 使用了除匿名Diffie-Hellman意外的其他算法都需
-- server_key_exchange:
-	+ 无须：服务端发送包含固定Diffie-Hellman参数的证书，或者使用了RSA交换算法
-	+ 必须：匿名Diffie-Hellman.....
-	+ todo
-- certificat_request: 如果服务端使用的不是匿名Diffie-Hellman算法，则服务端向客户端请求证书，
-- server_hello_done: 始终都需要的一个消息，
 
+参数：
+- 匿名Diffie-Hellman: 消息由两个全局Diffie-Hellman密钥值(一个素数和它的一个本原根)，以及一个服务器公钥(见图3.12)组成。
+- 暂态Diffie-Hellman: 消息内容由三个Diffie-Hellman参数和一个对这些参数的签名组成。
+- RSA密钥交换发生在服务器使用了RSA但是有一个仅用于RSA签名的密钥的情况下: 一般来说，客户端不能简单地发送一个用服务器公钥加密的密钥。相反，服务器必须产生一组临时RSA公钥/私钥对并使用服务器密钥交换消息发送其中的公钥。消息由两个临时RSA公钥(幂指数和模数，见图3.10)以及对这些参数的签名组成。 
+- Fortezza。 // todo
+
+
+签名：
+
+Hash(ClientHello.randomlServerHello.randomll ServerParams)
 
 
 ###### 阶段3: 客户端认证和密钥交换：
 
-如果服务端请求客户端发送证书，客户端发送密钥交换信息，客户端发送证书验证信息
+阶段任务：
+
+客户端检查服务端的证书是有效，检查server_hello中的参数是否可接受，如果服务端请求客户端发送证书，客户端发送密钥交换信息，计算主密码，客户端发送证书验证信息
 
 
-如果需要，客户端应该验证服务端提供的证书是否有效，同时检查server_hello参数是否是可接受的。
+certificate：日过收到服务端请求（certificat_request）则发送该消息，如果没有合适的证书发送no_certificate_alert
+client_key_exchange(参数，签名)：密钥交换，消息内容见下文
+certificate_verfiy(签名)：证书验证，方便服务端对客户端证书进行显示验证，使用固定Diffie-Hellman的情况不需要此过程，
 
 
-第三阶段中各个消息发送的条件：
+client_key_exchange的参数：
 
-certificate: 如果服务端请求证书
-client_key_exchange: 必须
-certificate_verfiy:
+- RSA: 客户端产生一个48字节的pre_master_secret(预备主密钥)，并用从服务器证书中得到的公钥或者用从server_key_exchange消息中得到的RSA临时密钥进行加密。如何利用它计算主密钥将会在后面进一步解释。
+- 暂态或匿名Diffie-Hellman: 发送客户端的Diffie-Hellman公钥参数。
+- 固定Diffie-Hellman: 以certificate消息的形式发送客户端的Diffie-Hellman公钥参数，该消息内容为空。
+- Fortezza: 发送客户端的Fortezza参数。
 
+certificate_verfiy的签名：
+
+```
+Certificate.Verify.signature.md5_hash=MD5(master_secret || pad_2 || MD5(handshake_messages || master_secret || pad_1));
+
+Certificate.Verify.signature.sha_hash=SHA(master_secret || pad_2 || SHA(handshake_messages || master_secret || pad_1));
+
+如果用户的私钥是DSS，则使用md5_hash
+如果用户的私钥是RSA，则使用md5_hash || sha_hash
+```
+
+其中:
+
+- pad_1和pad_2是前面讲过的用于MAC计算的填充值;
+- handshake_message(握手消息)是客户端启动clienthello时发送或接收到的所有握手协议消息，但不包括client_hello消息本身;
+- master_secret(主密钥)是一个计算得到的密钥值，其计算过程稍后讲述。
 
 
 
@@ -166,12 +253,24 @@ certificate_verfiy:
 改变密码套件，并结束握手协议
 
 
-消息发条件:
-
-client -> server: change_cipher_spec
-client -> server: finished
+client -> server: change_cipher_spec：修改密码规格，并把挂起的密码规格复制到当前的密码规格中，该消息使用更改密码规格协议发送
+client -> server: finished：验证密钥交换和认证过程是否成功
 server -> client: change_cipher_spec
 server -> client: finished
+
+
+finished消息的内容使用下面两个散列值的连接串：
+
+```
+MD5(master_secret || pad_2 || MD5(handshake_messages || Sender || master_secret || pad_1));
+SHA(master_secret || pad_2 || SHA(handshake_messages || Sender || master_secret || pad_1))
+```
+
+其中:
+
+- Sender是一个识别码，它能够把作为发送者的客户端与handshake_messages区分开来。
+- handshake_messages包括从所有握手消息起到Sender码之前的所有数据，但不包括本条消息。
+
 
 
 
@@ -184,7 +283,12 @@ server -> client: finished
 ```
 
 
+该协议的唯一功能是使得挂起状态改变为当前状态，用于更新此连接使用的密码套件。
+
+
+
 ##### 警报协议
+
 ```
 |1       |1       |
 |--------|--------|
@@ -192,12 +296,80 @@ server -> client: finished
 ```
 
 
+警报协议用于将与SSL相关的警报传达给对等实体。与使用SSL的其他应用一样，警报消息也要按照当前状态的规格进行压缩和加密操作。
+
+
+这一协议过程中的每一条消息都由两个字节组成。其中第一个字节可以取值为警告(1)或致命(2)以表示消息的严重程度。如果严重程度为致命，SSL将立即结束当前连接。虽然该会话中的其他连接还可以继续进行，但是本次会话不允许建立新的连接。第二个字节包括一种用于指明具体警告的编码。下面列出致命警告的内容(由SSL规范定义):
+- 非预期消息:接收到不恰当的消息。
+- MAC记录出错:接收到不正确的MAC码。
+- 解压缩失败:解压缩函数接收到不恰当的输入(例如，不能解压缩或解压缩后的数据大于允许的最大长度)。
+- 握手失败:发送者在可选范围内不能协商出一组可接受的安全参数。
+- 不合法参数:握手消息中的域超出范围或与其他域不一致。其他警报消息如下:
+- 结束通知:通报接收者，发送者在本次连接上将不再发送任何消息。连接双方中的一方在关闭连接之前都应该给对方发送这样一条消息。
+- 没有证书:如果没有合适的证书可用时，发送这条消息作为对证书请求者的回应。
+- 证书不可用:接收到的证书不可用(例如包含的签名无法通过验证)。
+- 不支持的证书:不支持接收到的证书类型。
+- 证书作废:证书已被签发者吊销。
+- 证书过期:证书已过期。
+- 未知证书:处理证书过程中引起的其他未知问题，导致该证书无法被系统识别和接受。
+
 
 ##### 心跳协议
 
 
+##### 密码计算
+
+主密钥的创建：
+
+共享主密钥是通过安全密钥交换方式，为会话创建的一个一次性48字节(384比特)的值。创建过程分两步完成:
+
+第一步，交换预备主密钥:
+
+有下面两种情况:
+
+- RSA: 客户端产生一个48字节的预备主密钥，并使用服务器的RSA公钥加密，然后将其发送给服务器。服务器使用自己的私钥解密以得到premastersecret(预备主密钥)。
+- Diffie-Hellman: 服务器和客户端各自产生一个Diffie-Hellman公钥值。交换之后，双方再分别做Diffie-Hellman计算来创建共享的预备主密钥。现在，客户和服务器都按照下面方法计算主密钥:
+
+
+第二步，双方计算主密钥:
+
+```
+Master_secret=MD5(pre_master_secret || SHA('A' || pre_master_secret || ClientHello.random || ServerHello.random)) ||
+			MD5(pre_master_secret || SHA('BB' || pre_master_secret || ClientHello.random || ServerHello.random)) ||
+			MD5(pre_master_secret || SHA('CCC’ || pre_master_secret || ClientHello.random || ServerHello.random))
+```
+
+
+密码参数产生：
+
+密码参数，是由主密钥通过散列函数计算产生的
+
+该过程完成下列参数的计算
+
+- 客户端写MAC值的密钥
+- 服务器写MAC值的密钥
+- 客户端写密钥
+- 服务器写密钥
+- 客户端写初始向量IV
+- 服务器写初始向量IV
+
+计算方法与通过从预备主密钥中计算主密钥的方法类似：
+
+```
+keyblock=MD5(master_secret || SHA('A' || master_secret || ServerHello.random || ClientHello.random)) ||
+		MD5(master_secret || SHA('BB' || master_secret || ServerHello.random || ClientHello.random)) ||
+		MD5(master_secret || SHA('CCC’ || master_secret || ServerHello.random || clientHello.random)) || ...
+```P
+
+该计算过程一直持续到产生足够长的输出。该算法结构的结果相当于一个伪随机函数。主密钥可以认为是伪随机函数的种子值。
+
+
 ## 抓包演示
 
+
+## Diffie-Hellman
+## RSA
+## 证书
 
 
 ## 参考文章
@@ -206,8 +378,8 @@ server -> client: finished
 - 《改变未来的九大算法》
 - <https://hpbn.co/transport-layer-security-tls/>
 - <https://zh.wikipedia.org/wiki/%E5%82%B3%E8%BC%B8%E5%B1%A4%E5%AE%89%E5%85%A8%E6%80%A7%E5%8D%94%E5%AE%9A>
-
-
+-《密码编码学与网络安全》
+-《网络安全基础：应用与标准》
 
 
 
