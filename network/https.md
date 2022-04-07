@@ -73,7 +73,7 @@ SSL记录协议为SSL连接提供如下两种服务:
 - 机密性: 握手协议定义一个可以用于加密SSL载荷的传统加密共享密钥。
 - 消息完整性: 握手协议还定义一个用于产生消息认证码(MAC)的共享密钥。
 
-数据处理流程：
+其内部处理流程：
 
 应用数据 -> 分块 -> 压缩 -> 添加MAC -> 加密 -> 添加tls记录头 -> 写入tcp socket
 
@@ -108,7 +108,7 @@ SSLCompressed.fragment=压缩后的数据块(如果没有进行压缩，则为�
 |type    |length                  |content  |
 ```
 
-SSL最复杂的部分是握手协议。这一协议允许客户端和服务器相互认证，并协商加密和MAC算法，以及用于保护数据使用的密钥通过SSL记录传送。握手协议在任何应用数据被传输之前使用。
+握手协议是SSL最复杂的部分。这一协议允许客户端和服务器相互认证，并协商加密和MAC算法，以及用于保护数据使用的密钥通过SSL记录传送。
 
 握手过程:
 
@@ -139,7 +139,7 @@ server -> client: finished
 
 ###### 阶段1: 建立安全功能
 
-发起逻辑连接并建立与之关联的安全能力，共享双方能力说明，密钥交换算法和密码规格协商
+~~发起逻辑连接并建立与之关联的安全能力~~，共享双方功能集，~~密钥交换算法和密码规格协商~~
 
 
 参数解释:
@@ -153,28 +153,24 @@ server -> client: finished
 
 密钥交换算法包括：
 
-- RSA: 用接收者的RSA公钥加密的密钥。这里必须要有一个接收者的可用公钥证书。
-- 
-？？：是否需要客户端的证书
+- RSA: 用接收者的RSA公钥加密的密钥。这里必须要有一个接收者的可用公钥证书。 // todo：是否需要客户端的证书，客户端的证书从哪里来
 
-- 固定Diffie-Hellman: 这是一个Diffie-Hellman密钥交换过程，其中服务器证书中包含的公钥参数由认证机构(Certificationauthority，CA)签发。也就是说，公钥证书包含Diffie-Hellman公钥参数。客户端可以通过证书提供其公钥参数(如果需要对客户端认证)，也可以通过密钥交换消息提供其公钥参数。使用固定的公钥参数和Diffie-Hellman算法进行计算将导致双方产生固定密钥。
+- 固定Diffie-Hellman: 这是一个Diffie-Hellman密钥交换过程，其中服务器证书中包含的公钥参数由认证机构(Certificationauthority，CA)签发。也就是说，公钥证书包含Diffie-Hellman公钥参数。客户端可以通过证书提供其公钥参数(如果需要对客户端认证)，也可以通过密钥交换消息提供其公钥参数。使用固定的公钥参数和Diffie-Hellman算法进行计算将导致双方产生固定密钥。 // todo hd的公钥参数如何存储，// todo：是否需要客户端的证书，客户端的证书从哪里来
 
->双方都在证书中放置Diffie-Hellman的公钥，通过证书交换完成Hellman公钥的交换，这样带来的问题是：Hellman公私钥都是固定的，导致计算出来的共享密钥也是相同，存在共享密钥的泄漏的风险
+>双方都在证书中放置Diffie-Hellman的公钥，通过证书交换完成Hellman公钥的交换，这样带来的问题是：双方都在证书中放置Diffie-Hellman公私钥都是固定的，导致计算出来的共享密钥也是相同，存在共享密钥的泄漏的风险
 
 - 暂态Diffie-Hellman: 这种技术用于创建暂态(临时或一次性)密钥。在这种情况下，Diffie-Hellman公钥通过使用发送者的RSA私钥或DSS密钥的方式被交换和签名。接收者可以用相应的公钥验证签名。证书用于认证公钥。这种方式似乎是三种 Diffie-Hellman密钥交换方式中最安全的一种，因为它最终将获得一个临时的、被认证的密钥。
 
->发送者对Hellman公钥用RSA的私钥签名，然后交换，接收者用RSA公钥验证签名
+>发送者对暂态Diffie-Hellman公钥用RSA的私钥签名，然后交换，接收者用RSA公钥验证签名
 
 - 匿名Diffie-Hellman(Anonymous Diffie-Hellman): 使用基本Diffie-Hellman密钥交换方案，且不进行认证。也就是说，双方发送自己的Diffie-Hellman参数给对方且不进行认证。这种方法容易受到“中间人攻击法”的攻击，其中攻击者与双方都进行匿名Diffie-Hellman密钥交换。
 
->直接交换Hellman公钥，存在中间人攻击的风险
+>直接交换Diffie-Hellman公钥，存在中间人攻击的风险
 
 - Fortezza: 这种技术专为Fortezza方案而定义。
 
-？？：客户端的证书从哪里来
 
-
-密码规格包括下面这些域:
+密码规格包括以下域:
 
 - 密码算法: 可以是前面提到的算法中的任何一种: RC4、RC2、DES、3DES、DES40、IDEA或Fortezza。
 - MAC算法: MD5和SHA-1。
@@ -188,38 +184,35 @@ server -> client: finished
 
 ###### 阶段2: 服务认证和密钥交换：
 
-服务端发送证书，密钥交换，请求证书，服务端发出问候，消息阶段结束信号
+服务端发送证书，密钥交换数据，请求证书，最后发送hello消息阶段的结束信号
 
 各个消息用途说明：
 
-certificate(X.509v3证书链)：向客户端发送证书，使用匿名Diffie-Hellman算法的情况不需要此过程
-server_key_exchange(参数，签名)：密钥交换，使用固定Diffie-Hellman，或者RSA算法的情况不需要此过程，参数和签名下文详细描述
-certificat_request(证书类型，认证机构)：请求客户端证书，使用匿名Diffie-Hellman算法的情况不需要此过程，证书类型指定了公钥算法及用法
-server_hello_done：服务端的hello及相应消息已经结束
+- certificate(X.509v3证书链)：向客户端发送证书，使用匿名Diffie-Hellman算法的情况不需要此过程
+- server_key_exchange(参数，签名)：密钥交换，使用固定Diffie-Hellman，或者RSA算法的情况不需要此过程，参数和签名下文详细描述 // todo RSA密钥交换过程是什么
+- certificat_request(证书类型，认证机构)：请求客户端证书，使用匿名Diffie-Hellman算法的情况不需要此过程，证书类型指定了公钥算法及用法
+- server_hello_done：服务端的hello及相应消息已经结束
 
 
-参数：
+server_key_exchange的参数：
 - 匿名Diffie-Hellman: 消息由两个全局Diffie-Hellman密钥值(一个素数和它的一个本原根)，以及一个服务器公钥(见图3.12)组成。
 - 暂态Diffie-Hellman: 消息内容由三个Diffie-Hellman参数和一个对这些参数的签名组成。
-- RSA密钥交换发生在服务器使用了RSA但是有一个仅用于RSA签名的密钥的情况下: 一般来说，客户端不能简单地发送一个用服务器公钥加密的密钥。相反，服务器必须产生一组临时RSA公钥/私钥对并使用服务器密钥交换消息发送其中的公钥。消息由两个临时RSA公钥(幂指数和模数，见图3.10)以及对这些参数的签名组成。 
+- RSA密钥交换发生在服务器使用了RSA，但是有一个仅用于RSA签名的密钥的情况下: 一般来说，客户端不能简单地发送一个用服务器公钥加密的密钥。相反，服务器必须产生一组临时RSA公钥/私钥对，并使用服务器密钥交换消息发送其中的公钥。消息由两个临时RSA公钥(幂指数和模数，见图3.10)以及对这些参数的签名组成。 // todo
 - Fortezza。 // todo
 
 
-签名：
+server_key_exchange的签名：
 
-Hash(ClientHello.randomlServerHello.randomll ServerParams)
+Hash(ClientHello.random || ServerHello.random || ServerParams)
 
 
 ###### 阶段3: 客户端认证和密钥交换：
 
-阶段任务：
-
 客户端检查服务端的证书是有效，检查server_hello中的参数是否可接受，如果服务端请求客户端发送证书，客户端发送密钥交换信息，计算主密码，客户端发送证书验证信息
 
-
-certificate：日过收到服务端请求（certificat_request）则发送该消息，如果没有合适的证书发送no_certificate_alert
-client_key_exchange(参数，签名)：密钥交换，消息内容见下文
-certificate_verfiy(签名)：证书验证，方便服务端对客户端证书进行显示验证，使用固定Diffie-Hellman的情况不需要此过程，
+- certificate：日过收到服务端请求（certificat_request）则发送该消息，如果没有合适的证书发送no_certificate_alert
+- client_key_exchange(参数，签名)：密钥交换，消息内容见下文
+- certificate_verfiy(签名)：证书验证，方便服务端对客户端证书进行显示验证，使用固定Diffie-Hellman的情况不需要此过程，
 
 
 client_key_exchange的参数：
@@ -250,7 +243,7 @@ Certificate.Verify.signature.sha_hash=SHA(master_secret || pad_2 || SHA(handshak
 
 ###### 阶段4: 完成
 
-改变密码套件，并结束握手协议
+切换密码套件，并结束握手协议
 
 
 client -> server: change_cipher_spec：修改密码规格，并把挂起的密码规格复制到当前的密码规格中，该消息使用更改密码规格协议发送
@@ -283,7 +276,7 @@ SHA(master_secret || pad_2 || SHA(handshake_messages || Sender || master_secret 
 ```
 
 
-该协议的唯一功能是使得挂起状态改变为当前状态，用于更新此连接使用的密码套件。
+该协议的唯一功能是使得挂起状态改变为当前状态，用于更新此连接使用的预报密码套件。
 
 
 
@@ -319,15 +312,15 @@ SHA(master_secret || pad_2 || SHA(handshake_messages || Sender || master_secret 
 
 ##### 密码计算
 
-主密钥的创建：
+###### 主密钥的创建：
 
 共享主密钥是通过安全密钥交换方式，为会话创建的一个一次性48字节(384比特)的值。创建过程分两步完成:
 
 第一步，交换预备主密钥:
 
-有下面两种情况:
+包括以下两种交换方式:
 
-- RSA: 客户端产生一个48字节的预备主密钥，并使用服务器的RSA公钥加密，然后将其发送给服务器。服务器使用自己的私钥解密以得到premastersecret(预备主密钥)。
+- RSA: 客户端产生一个48字节的预备主密钥，并使用服务器的RSA公钥加密，然后将其发送给服务器。服务器使用自己的私钥解密以得到pre_master_secret(预备主密钥)。
 - Diffie-Hellman: 服务器和客户端各自产生一个Diffie-Hellman公钥值。交换之后，双方再分别做Diffie-Hellman计算来创建共享的预备主密钥。现在，客户和服务器都按照下面方法计算主密钥:
 
 
@@ -340,11 +333,9 @@ Master_secret=MD5(pre_master_secret || SHA('A' || pre_master_secret || ClientHel
 ```
 
 
-密码参数产生：
+###### 密码参数产生：
 
-密码参数，是由主密钥通过散列函数计算产生的
-
-该过程完成下列参数的计算
+密码规格中参数，是由主密钥通过散列函数计算产生的，完成下列参数的计算：
 
 - 客户端写MAC值的密钥
 - 服务器写MAC值的密钥
@@ -353,20 +344,18 @@ Master_secret=MD5(pre_master_secret || SHA('A' || pre_master_secret || ClientHel
 - 客户端写初始向量IV
 - 服务器写初始向量IV
 
-计算方法与通过从预备主密钥中计算主密钥的方法类似：
+计算方法类似于通过主预备密钥计算主密钥的过程：
 
 ```
 keyblock=MD5(master_secret || SHA('A' || master_secret || ServerHello.random || ClientHello.random)) ||
 		MD5(master_secret || SHA('BB' || master_secret || ServerHello.random || ClientHello.random)) ||
 		MD5(master_secret || SHA('CCC’ || master_secret || ServerHello.random || clientHello.random)) || ...
-```P
+```
 
-该计算过程一直持续到产生足够长的输出。该算法结构的结果相当于一个伪随机函数。主密钥可以认为是伪随机函数的种子值。
+该计算过程一直持续到产生足够长的输出。结果相当于一个伪随机数。主密钥可以认为是伪随机函数的种子值。
 
 
 ## 抓包演示
-
-
 ## Diffie-Hellman
 ## RSA
 ## 证书
@@ -383,3 +372,10 @@ keyblock=MD5(master_secret || SHA('A' || master_secret || ServerHello.random || 
 
 
 
+## todo
+
+子标题需要重新排版
+
+密码规格中的细节
+
+机密性，完整性，认证性
