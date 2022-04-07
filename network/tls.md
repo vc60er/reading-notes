@@ -1,28 +1,30 @@
 
 # TLS
 
-<!-- MarkdownTOC -->
+<!-- MarkdownTOC autolink="true" -->
 
-- TLS体系结构
-- 记录协议
-- 握手协议
-	- 阶段1: 建立安全功能
-	- 阶段2: 服务认证和密钥交换：
-	- 阶段3: 客户端认证和密钥交换：
-	- 阶段4: 完成
-	- 主密钥的创建
-		- 第一步，交换预备主密钥:
-		- 第二步，双方计算主密钥:
-	- 密码参数产生
-- 修改密码规范协议
-- 警报协议
-- 心跳协议
-- Diffie-Hellman
-- RSA
-- 证书
-- 抓包演示
-- 参考文章
-- todo
+- [TLS体系结构](#tls%E4%BD%93%E7%B3%BB%E7%BB%93%E6%9E%84)
+- [记录协议](#%E8%AE%B0%E5%BD%95%E5%8D%8F%E8%AE%AE)
+- [握手协议](#%E6%8F%A1%E6%89%8B%E5%8D%8F%E8%AE%AE)
+	- [阶段1: 建立安全功能](#%E9%98%B6%E6%AE%B51-%E5%BB%BA%E7%AB%8B%E5%AE%89%E5%85%A8%E5%8A%9F%E8%83%BD)
+	- [阶段2: 服务认证和密钥交换：](#%E9%98%B6%E6%AE%B52-%E6%9C%8D%E5%8A%A1%E8%AE%A4%E8%AF%81%E5%92%8C%E5%AF%86%E9%92%A5%E4%BA%A4%E6%8D%A2%EF%BC%9A)
+	- [阶段3: 客户端认证和密钥交换：](#%E9%98%B6%E6%AE%B53-%E5%AE%A2%E6%88%B7%E7%AB%AF%E8%AE%A4%E8%AF%81%E5%92%8C%E5%AF%86%E9%92%A5%E4%BA%A4%E6%8D%A2%EF%BC%9A)
+	- [阶段4: 完成](#%E9%98%B6%E6%AE%B54-%E5%AE%8C%E6%88%90)
+	- [主密钥的创建](#%E4%B8%BB%E5%AF%86%E9%92%A5%E7%9A%84%E5%88%9B%E5%BB%BA)
+		- [第一步，交换预备主密钥:](#%E7%AC%AC%E4%B8%80%E6%AD%A5%EF%BC%8C%E4%BA%A4%E6%8D%A2%E9%A2%84%E5%A4%87%E4%B8%BB%E5%AF%86%E9%92%A5)
+		- [第二步，双方计算主密钥:](#%E7%AC%AC%E4%BA%8C%E6%AD%A5%EF%BC%8C%E5%8F%8C%E6%96%B9%E8%AE%A1%E7%AE%97%E4%B8%BB%E5%AF%86%E9%92%A5)
+	- [密码参数产生](#%E5%AF%86%E7%A0%81%E5%8F%82%E6%95%B0%E4%BA%A7%E7%94%9F)
+- [修改密码规范协议](#%E4%BF%AE%E6%94%B9%E5%AF%86%E7%A0%81%E8%A7%84%E8%8C%83%E5%8D%8F%E8%AE%AE)
+- [警报协议](#%E8%AD%A6%E6%8A%A5%E5%8D%8F%E8%AE%AE)
+- [心跳协议](#%E5%BF%83%E8%B7%B3%E5%8D%8F%E8%AE%AE)
+- [Diffie-Hellman](#diffie-hellman)
+- [RSA](#rsa)
+	- [公私钥的计算](#%E5%85%AC%E7%A7%81%E9%92%A5%E7%9A%84%E8%AE%A1%E7%AE%97)
+- [证书](#%E8%AF%81%E4%B9%A6)
+	- [证书链](#%E8%AF%81%E4%B9%A6%E9%93%BE)
+- [抓包演示](#%E6%8A%93%E5%8C%85%E6%BC%94%E7%A4%BA)
+- [参考文章](#%E5%8F%82%E8%80%83%E6%96%87%E7%AB%A0)
+- [todo](#todo)
 
 <!-- /MarkdownTOC -->
 
@@ -161,8 +163,7 @@ server -> client: finished
 
 ### 阶段1: 建立安全功能
 
-~~发起逻辑连接并建立与之关联的安全能力~~，共享双方功能集，~~密钥交换算法和密码规格协商~~
-
+双方共享双方功能集
 
 参数解释:
 
@@ -175,7 +176,7 @@ server -> client: finished
 
 密钥交换算法包括：
 
-- RSA: 用接收者的RSA公钥加密的密钥。这里必须要有一个接收者的可用公钥证书。 // todo：是否需要客户端的证书，客户端的证书从哪里来
+- RSA: 客户端使用服务端的RSA公钥加密的密钥，然后发送给服务端，服务端用私钥解密得到密钥。
 
 - 固定Diffie-Hellman: 这是一个Diffie-Hellman密钥交换过程，其中服务器证书中包含的公钥参数由认证机构(Certificationauthority，CA)签发。也就是说，公钥证书包含Diffie-Hellman公钥参数。客户端可以通过证书提供其公钥参数(如果需要对客户端认证)，也可以通过密钥交换消息提供其公钥参数。使用固定的公钥参数和Diffie-Hellman算法进行计算将导致双方产生固定密钥。 // todo hd的公钥参数如何存储，// todo：是否需要客户端的证书，客户端的证书从哪里来
 
@@ -211,22 +212,24 @@ server -> client: finished
 各个消息用途说明：
 
 - certificate(X.509v3证书链)：向客户端发送证书，使用匿名Diffie-Hellman算法的情况不需要此过程
-- server_key_exchange(参数，签名)：密钥交换，使用固定Diffie-Hellman，或者RSA算法的情况不需要此过程，参数和签名下文详细描述 // todo RSA密钥交换过程是什么
+- server_key_exchange(参数，签名)：密钥交换，使用固定Diffie-Hellman，或者RSA算法的情况不需要此过程，参数和签名下文详细描述
 - certificat_request(证书类型，认证机构)：请求客户端证书，使用匿名Diffie-Hellman算法的情况不需要此过程，证书类型指定了公钥算法及用法
 - server_hello_done：服务端的hello及相应消息已经结束
 
 
 server_key_exchange的参数：
-- 匿名Diffie-Hellman: 消息由两个全局Diffie-Hellman密钥值(一个素数和它的一个本原根)，以及一个服务器公钥(见图3.12)组成。
+- 匿名Diffie-Hellman: 消息由两个全局Diffie-Hellman密钥值(一个素数和它的一个本原根)，以及一个服务器公钥组成。
 - 暂态Diffie-Hellman: 消息内容由三个Diffie-Hellman参数和一个对这些参数的签名组成。
-- RSA密钥交换发生在服务器使用了RSA，但是有一个仅用于RSA签名的密钥的情况下: 一般来说，客户端不能简单地发送一个用服务器公钥加密的密钥。相反，服务器必须产生一组临时RSA公钥/私钥对，并使用服务器密钥交换消息发送其中的公钥。消息由两个临时RSA公钥(幂指数和模数，见图3.10)以及对这些参数的签名组成。 // todo
+- RSA密钥交换，服务器在使用RSA时仅用了RSA签名密钥，因此，客户端不能简单地通过服务器公钥加密其密钥后传送，而服务器必须创建一个临时RSA公钥/私钥对，并使用服务器密钥交换消息发送公钥。消息内容包含两个临时的RSA公钥参数(指数和模)和参数签名。 // todo
 - Fortezza。 // todo
+
 
 
 server_key_exchange的签名：
 
+```
 Hash(ClientHello.random || ServerHello.random || ServerParams)
-
+```
 
 ### 阶段3: 客户端认证和密钥交换：
 
@@ -267,12 +270,12 @@ Certificate.Verify.signature.sha_hash=SHA(master_secret || pad_2 || SHA(handshak
 
 切换密码套件，并结束握手协议
 
-
+```plantuml
 client -> server: change_cipher_spec：修改密码规格，并把挂起的密码规格复制到当前的密码规格中，该消息使用更改密码规格协议发送
 client -> server: finished：验证密钥交换和认证过程是否成功
 server -> client: change_cipher_spec
 server -> client: finished
-
+```
 
 finished消息的内容使用下面两个散列值的连接串：
 
@@ -377,18 +380,21 @@ keyblock=MD5(master_secret || SHA('A' || master_secret || ServerHello.random || 
 
 
 ## Diffie-Hellman
+
 ## RSA
+### 公私钥的计算
+
 ## 证书
+### 证书链
+
 ## 抓包演示
 
 ## 参考文章
 
-- 《密码编码学与网络安全》  
-- 《改变未来的九大算法》  
-- <https://hpbn.co/transport-layer-security-tls>  
-- <https://zh.wikipedia.org/wiki/%E5%82%B3%E8%BC%B8%E5%B1%A4%E5%AE%89%E5%85%A8%E6%80%A7%E5%8D%94%E5%AE%9A>  
--《密码编码学与网络安全》  
 -《网络安全基础：应用与标准》  
+- 《密码编码学与网络安全》  
+- <https://hpbn.co/transport-layer-security-tls>  
+- <https://zh.wikipedia.org/wiki/%E5%82%B3%E8%BC%B8%E5%B1%A4%E5%AE%89%E5%85%A8%E6%80%A7%E5%8D%94%E5%AE%9A>    
 
 
 
