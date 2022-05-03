@@ -17,9 +17,12 @@
 - [修改密码规范协议](#%E4%BF%AE%E6%94%B9%E5%AF%86%E7%A0%81%E8%A7%84%E8%8C%83%E5%8D%8F%E8%AE%AE)
 - [警报协议](#%E8%AD%A6%E6%8A%A5%E5%8D%8F%E8%AE%AE)
 - [心跳协议](#%E5%BF%83%E8%B7%B3%E5%8D%8F%E8%AE%AE)
-- [Diffie-Hellman](#diffie-hellman)
+- [DH\(Diffie-Hellman\)](#dhdiffie-hellman)
+- [ECDH\(Elliptic Curve Diffie–Hellman\)](#ecdhelliptic-curve-diffie%E2%80%93hellman)
 - [RSA](#rsa)
 	- [公私钥的计算](#%E5%85%AC%E7%A7%81%E9%92%A5%E7%9A%84%E8%AE%A1%E7%AE%97)
+	- [加解密](#%E5%8A%A0%E8%A7%A3%E5%AF%86)
+- [AES](#aes)
 - [证书](#%E8%AF%81%E4%B9%A6)
 	- [证书链](#%E8%AF%81%E4%B9%A6%E9%93%BE)
 - [抓包演示](#%E6%8A%93%E5%8C%85%E6%BC%94%E7%A4%BA)
@@ -379,22 +382,63 @@ keyblock=MD5(master_secret || SHA('A' || master_secret || ServerHello.random || 
 
 
 
-## Diffie-Hellman
+## DH(Diffie-Hellman)
+
+1. 确定原本根g，和一个大素数p
+2. 甲方选择一个大整数a作为私钥，计算A=g^a mod p作为公钥, 并发送给乙方
+3. 乙方选择一个大整数b作为私钥，计算B=g^b mod p作为公钥, 并发送给甲方
+4. 甲方计算，B^a mod p，得到共享密钥
+5. 乙方计算，A^b mod p，得到共享密钥
+
+
+
+## ECDH(Elliptic Curve Diffie–Hellman)
+
+todo
+
 
 ## RSA
+
 ### 公私钥的计算
 
+1. 选择两个大素数p，q
+2. 计算乘机n=p\*q
+3. 计算n的欧拉函数φ(n)。φ(n) = (p-1)(q-1)
+4. 随机选择一个整数e，条件是1< e < φ(n)，且e与φ(n) 互质。
+5. 计算e对于φ(n)的模反元素d。既满足ed = 1 (mod o(n))的d
+6. 将n和e封装成公钥，n和d封装成私钥。pubkey={e,n},seckey={d,n}
+
+
+### 加解密
+1. 加密：m^e ≡ c (mod n)
+2. 解密：c^d ≡ m (mod n)
+
+
+## AES
+
+todo
+
+
+
+
 ## 证书
+
 ### 证书链
+
+todo
+
 
 ## 抓包演示
 
+
+
 ## 参考文章
 
--《网络安全基础：应用与标准》  
-- 《密码编码学与网络安全》  
+- 《网络安全基础：应用与标准》 
 - <https://hpbn.co/transport-layer-security-tls>  
 - <https://zh.wikipedia.org/wiki/%E5%82%B3%E8%BC%B8%E5%B1%A4%E5%AE%89%E5%85%A8%E6%80%A7%E5%8D%94%E5%AE%9A>    
+- <https://ruanyifeng.com/blog/2013/06/rsa_algorithm_part_one.html>
+- <https://www.ruanyifeng.com/blog/2013/07/rsa_algorithm_part_two.html>
 
 
 
