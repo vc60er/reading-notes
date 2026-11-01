@@ -1,75 +1,103 @@
 # golang
 
-
 <!-- MarkdownTOC autolink="true" -->
 
 - [goroutine](#goroutine)
-    - [gpm](#gpm)
-    - [gm](#gm)
-    - [netpoller](#netpoller)
+  - [gpm](#gpm)
+  - [gm](#gm)
+  - [netpoller](#netpoller)
 - [基本类型](#%E5%9F%BA%E6%9C%AC%E7%B1%BB%E5%9E%8B)
-    - [channel](#channel)
-    - [map](#map)
-    - [interface](#interface)
-    - [slice](#slice)
-    - [array](#array)
-    - [select](#select)
-    - [defer](#defer)
+  - [channel](#channel)
+  - [map](#map)
+  - [interface](#interface)
+  - [slice](#slice)
+  - [array](#array)
+  - [select](#select)
+  - [defer](#defer)
 - [标准库](#%E6%A0%87%E5%87%86%E5%BA%93)
-    - [sync.Map](#syncmap)
-    - [unsafe](#unsafe)
-    - [atomic.Value](#atomicvalue)
-    - [unsafe.Pointer](#unsafepointer)
-    - [golang.org/x/time/rate](#golangorgxtimerate)
+  - [sync.Map](#syncmap)
+  - [unsafe](#unsafe)
+  - [atomic.Value](#atomicvalue)
+  - [unsafe.Pointer](#unsafepointer)
+  - [golang.org/x/time/rate](#golangorgxtimerate)
 - [内存](#%E5%86%85%E5%AD%98)
-    - [gc：并发三色标记，写屏障，并发清除](#gc%EF%BC%9A%E5%B9%B6%E5%8F%91%E4%B8%89%E8%89%B2%E6%A0%87%E8%AE%B0%EF%BC%8C%E5%86%99%E5%B1%8F%E9%9A%9C%EF%BC%8C%E5%B9%B6%E5%8F%91%E6%B8%85%E9%99%A4)
-    - [memory allocation](#memory-allocation)
-    - [内存逃逸](#%E5%86%85%E5%AD%98%E9%80%83%E9%80%B8)
-    - [time.Timer](#timetimer)
-        - [go1.4](#go14)
-        - [go1.4 before](#go14-before)
+  - [gc：并发三色标记，写屏障，并发清除](#gc%EF%BC%9A%E5%B9%B6%E5%8F%91%E4%B8%89%E8%89%B2%E6%A0%87%E8%AE%B0%EF%BC%8C%E5%86%99%E5%B1%8F%E9%9A%9C%EF%BC%8C%E5%B9%B6%E5%8F%91%E6%B8%85%E9%99%A4)
+  - [memory allocation](#memory-allocation)
+  - [内存逃逸](#%E5%86%85%E5%AD%98%E9%80%83%E9%80%B8)
+  - [time.Timer](#timetimer)
+    - [go1.4](#go14)
+    - [go1.4 before](#go14-before)
 - [tools](#tools)
 - [基本用法](#%E5%9F%BA%E6%9C%AC%E7%94%A8%E6%B3%95)
-    - [context.Context](#contextcontext)
+  - [context.Context](#contextcontext)
 - [细节](#%E7%BB%86%E8%8A%82)
 - [常问问题](#%E5%B8%B8%E9%97%AE%E9%97%AE%E9%A2%98)
 - [新变化](#%E6%96%B0%E5%8F%98%E5%8C%96)
 - [web框架](#web%E6%A1%86%E6%9E%B6)
-    - [gin](#gin)
-    - [fasthttp](#fasthttp)
+  - [gin](#gin)
+  - [fasthttp](#fasthttp)
 - [参考](#%E5%8F%82%E8%80%83)
 - [TODO](#todo)
 
 <!-- /MarkdownTOC -->
 
-
-
-
-
 ## goroutine
 
-### gpm
+### 协程的优势
 
-**g**：goruntine
+1. 协程的栈内存占用更小，2KB，线程需要 1MB
 
-**p**：processs，是一个逻辑处理单元，最终任务要交个他所绑定的m去处理
+2. 协程的上下文切换耗时更低 ：0.2us，线程需要 1us
 
-1. p拥有一个goruntine本地队列，绑定一个m，还还有内存缓存
-2. 通过抢占式调度的办法将本地队列中的g交个m去处理。
-3. 如果正在执行的g中超时（>10ms），会发生调度，当前G被被放到本地队列末尾
-4. 如果G被阻塞在某个channel操作或network I/O操作上时，G会被放置到某个wait队列中，当I/O available或channel操作完成，在wait队列中的G会被唤醒，标记为runnable，放入到某P的队列中，绑定一个M继续执行
-5. 如果G被阻塞在系统调用上，那么不光G会阻塞，执行该G的M也会解绑P(实质是被sysmon抢走了)，与G一起进入sleep状态
 
-**m**：machine，是线程的描述
+
+### 协程的两种调度模型
+
+#### G-P-M
+
+##### 概念：
+
+1. G(gorountine)代表协程
+2. P(processor)代表逻辑处理器
+3. M(machine)代表机器，用来执行 p，所以也可以说 m 代表线程。
+
+
+
+##### 实现方式
+
+**G**：goruntine
+
+**P**：processs，是一个逻辑处理单元，最终任务要交给他所绑定的m去处理
+
+1. P 拥有一个 G 的本地队列，会绑定一个M，还有一个内存缓存
+2. 通过抢占式调度的办法，将本地队列中的G交给M去处理。
+3. 如果正在执行的G中出现超时（>10ms），则发生抢占调度，合将当前G放到本地队列的队尾
+4. 如果G 的运行被阻塞时，比如在某个channel操作或network I/O操作上，则将G会放置到某个wait队列中。当阻塞操作完成后，wait队列中的G会被唤醒，标记为runnable，再次放入到某P的队列中，绑定一个M继续执行
+5. 如果G被阻塞在系统调用上，（那么相关的 P 和 M 将会解绑，M 和 G 一起进入 sleep 状态）那么不光G会阻塞，执行该G的M也会解绑P(实质是被sysmon抢走了)，与G一起进入sleep状态
+
+
+
+**M**：machine，是线程的描述
+
+
+
+![Image 1: img{512x368}](https://tonybai.com/images/wp-content/uploads/goroutine-scheduler-model.png)
+
+
+
+**Work-stealing**
+
+
 
 **wait队列**
 
 如果G被阻塞在某个channel操作或network I/O操作上时，G会被放置到某个wait队列中
 
+
+
 **global队列**
 
 [todo]
-
 
 **sysmon线程**
 
@@ -77,7 +105,7 @@
 2. 如果超过2分钟没有垃圾回收，强制执行；
 3. 将长时间未处理的netpoll结果添加到任务队列；
 4. 向长时间运行的G任务发出抢占调度；
-3. 收回因syscall长时间阻塞的P；
+5. 收回因syscall长时间阻塞的P；
 
 **抢占试调度**
 
@@ -91,8 +119,10 @@ Go runtime已经实现了netpoller，这使得即便G发起网络I/O操作也不
 
 regular file的I/O操作一旦阻塞，那么M将进入sleep状态，等待I/O返回后被唤醒；这种情况下P将与sleep的M分离，再选择一个idle的M。如果此时没有idle的M，则会新创建一个M，这就是为何大量I/O操作导致大量Thread被创建的原因。
 
+#### 
 
-### gm
+#### GM
+
 **g**：goruntine
 
 **m**：machine，是线程的描述
@@ -104,22 +134,24 @@ regular file的I/O操作一旦阻塞，那么M将进入sleep状态，等待I/O�
 3. 每个M做内存缓存，导致内存占用过高，数据局部性较差；
 4. 由于syscall调用而形成的剧烈的worker thread阻塞和解除阻塞，导致额外的性能损耗。
 
-
 **参考资料**
 
 1. [也谈goroutine调度器](https://tonybai.com/2017/06/23/an-intro-about-goroutine-scheduler/)  
+
 2. [图解Go运行时调度器](https://tonybai.com/2020/03/21/illustrated-tales-of-go-runtime-scheduler/)  
+
+3. [深入分析Go1.18 GMP调度器底层原理](https://zhuanlan.zhihu.com/p/700315481)
 
 
 
 ### netpoller
+
 todo:
-
-
 
 ## 基本类型
 
 ### channel
+
 是一个有锁的循环队列，由于缺乏数据而等待的goruntine队列：sendq，recvq
 
 **数据结构**
@@ -140,14 +172,9 @@ todo:
 - 当缓冲区存在数据时，从 Channel 的缓冲区中接收数据；
 - 当缓冲区中不存在数据时，等待其他 Goroutine 向 Channel 发送数据，并且当前goruntine加入recvq
 
-
 **参考资料**
 
 1. [6.4 Channel](https://draveness.me/golang/docs/part3-runtime/ch06-concurrency/golang-channel/)
-
-
-
-
 
 ### map
 
@@ -202,12 +229,10 @@ type mapextra struct {
 - bucket顶部重复每个key的hash(key)的高8位，
 - key，value分开独立存储，
 
-
 **扩容方式**
 
 - rehash
 - 压缩bucket
-
 
 **扩容时机**
 
@@ -233,17 +258,11 @@ type mapextra struct {
 
 [todo]
 
-
-
 **参考**
 
 1. [3.3 哈希表](https://draveness.me/golang/docs/part2-foundation/ch03-datastructure/golang-hashmap/)
 - [map 的底层实现原理是什么](https://qcrao91.gitbook.io/go/map/map-de-di-ceng-shi-xian-yuan-li-shi-shi-mo)
 - [map 的扩容过程是怎样的](https://qcrao91.gitbook.io/go/map/map-de-kuo-rong-guo-cheng-shi-zen-yang-de)
-
-
-
-
 
 ### interface
 
@@ -294,15 +313,13 @@ type itab struct { // 32 bytes
 3. 指针和值类型都可以实现接口的，但是不能同时实现同一个接口；对象都是通过值传递的
 4. 指针可以使用值的接口，但是不可以使用指针的接口
 
-
 **参考**
 
 1. [4.2 接口](https://draveness.me/golang/docs/part2-foundation/ch04-basic/golang-interface/)
 2. [iface 和 eface 的区别是什么](https://qcrao91.gitbook.io/go/interface/iface-he-eface-de-qu-bie-shi-shi-mo)
 
-
-
 ### slice
+
 slice 的底层数据是数组，slice 是对数组的封装，它描述一个数组的片段
 底层数组是可以被多个 slice 同时指向的，因此对一个 slice 的元素进行操作是有可能影响到其他 slice 的。
 slice 的复制，只是引用的赋值
@@ -338,6 +355,7 @@ func main() {
     fmt.Println(slice)
 }
 ```
+
 ```shell
 [2 3 20]
 [4 5 6 7 100 200]
@@ -351,9 +369,6 @@ func main() {
 
 todo: 不准确
 
-
-
-
 ### array
 
 与很多语言不同，Go 语言中数组在初始化之后大小就无法改变，存储元素类型相同、但是大小不同的数组类型在 Go 语言看来也是完全不同的，只有两个条件都相同才是同一个类型。
@@ -364,7 +379,6 @@ todo: 不准确
 arr1 := [3]int{1, 2, 3}
 arr2 := [...]int{1, 2, 3}
 ```
-
 
 ### select
 
@@ -383,7 +397,6 @@ select 关键字也能够让 Goroutine 同时等待多个 Channel 的可读或�
 - 如果我们按照顺序依次判断，那么后面的条件永远都会得不到执行，而随机的引入就是为了避免饥饿问题的发生
 - 空的 select 语句（没有case）会直接阻塞当前的 Goroutine，导致 Goroutine 进入无法被唤醒的永久休眠状态。
 
-
 ```goalng
 type scase struct {
     c           *hchan
@@ -395,9 +408,6 @@ type scase struct {
 ```
 
 todo:
-
-
-
 
 ### defer
 
@@ -423,11 +433,7 @@ type _defer struct {
 
 runtime._defer 结构体是延迟调用链表上的一个元素，所有的结构体都会通过 link 字段串联成链表。
 
-
-
 todo:
-
-
 
 ## 标准库
 
@@ -437,10 +443,10 @@ todo:
 
 ```golang
 type Map struct {
-	mu Mutex
-	read atomic.Value // readOnly
-	dirty map[interface{}]*entry
-	misses int
+    mu Mutex
+    read atomic.Value // readOnly
+    dirty map[interface{}]*entry
+    misses int
 }
 
 type readOnly struct {
@@ -454,15 +460,12 @@ type entry struct {
 }
 ```
 
-
-
 **查询**
 
 1. 查只读map，
 2. 如果没有查到，并且dirty中数据被修改过，查找dirty中的数据
 3. 如果在dirty中找到数据，misses++
 4. 当misses大于一定次数时，将dirty的引用赋值给read，misses=0，dirty=nil，amended=false
-
 
 **删除**
 
@@ -475,7 +478,6 @@ type entry struct {
 2. 如果在dirty中找到，修改值
 3. 否则，dirty中添加新值，如果，dirty被修改过，先全量从read同步数据到dirty中，在向dirty添加数据
 
-
 **优缺点**
 
 优点：是官方出的，是亲儿子；通过读写分离，降低锁时间来提高效率； 
@@ -484,28 +486,21 @@ type entry struct {
 
 适用场景：大量读，少量写
 
-
 **参考**
 
 [由浅入深聊聊Golang的sync.Map](https://juejin.im/post/5d36a7cbf265da1bb47da444)
 
-
-
-
-
-
-
-
 ### unsafe
+
 todo:
 
 ### atomic.Value
+
 todo:
 
 ### unsafe.Pointer
+
 todo:
-
-
 
 ### golang.org/x/time/rate
 
@@ -517,7 +512,6 @@ todo:
 
 1. 剩余token数据 = tokens + tokensFromDuration(d)
 2. 等待时间通过durationFromTokens(n)来计算
-
 
 ```golang
 // The methods AllowN, ReserveN, and WaitN consume n tokens.
@@ -551,83 +545,73 @@ type Reservation struct {
 
 [Golang 标准库限流器 time/rate 实现剖析](https://www.cyhone.com/articles/analisys-of-golang-rate/)
 
-
-
-
 ## 内存
+
 ### gc：并发三色标记，写屏障，并发清除
+
 [培训大师 William 图解 Go 中的 GC 系列：第一部分 - 基础](https://mp.weixin.qq.com/s/mYp3QbdWR4HEZimFUw9bAA).  
 [培训大师 William 图解 Go 中的 GC 系列：第二部分 - GC 追踪](https://mp.weixin.qq.com/s?__biz=MzAxMTA4Njc0OQ==&mid=2651437958&idx=2&sn=f5cc599c2da7c463ec26750cb352057c&chksm=80bb6574b7ccec6210b534c11896abb61f81f9117675feb8a70b696e850cde2a0cf936fca4b9&scene=21#wechat_redirect).  
 [培训大师 William 图解 Go 中的 GC 系列：第三部 - GCPacing](https://mp.weixin.qq.com/s?__biz=MzAxMTA4Njc0OQ==&amp;mid=2651438002&amp;idx=1&amp;sn=5e46b5fce65ba65a0ed53256326122ed&amp;chksm=80bb6540b7ccec56171516ba721150ab4a44117043f157e263cbaccf3ff11805bb96fb644e8e#rd).  
 
-
-
-
 ### memory allocation
+
 [可视化Go内存管理](https://tonybai.com/2020/03/10/visualizing-memory-management-in-golang/)   
 [Go 内存分配器可视化指南](https://www.linuxzen.com/go-memory-allocator-visual-guide.html)   
 [7.1 内存分配器](https://draveness.me/golang/docs/part3-runtime/ch07-memory/golang-memory-allocator/)
 
 程序中的数据和变量都会被分配到程序所在的虚拟内存中，内存空间包含两个重要区域 — 栈区（Stack）和堆区（Heap）。函数调用的参数、返回值以及局部变量大都会被分配到栈上，这部分内存会由编译器进行管理；
 
-
 spans 区域存储了指向内存管理单元 runtime.mspan 的指针，每个内存单元会管理几页的内存空间，每页大小为 8KB；
-
 
 http://btfak.com/golang/2017/02/08/golang-memory-allocate/
 
 todo:
 
-
 ### 内存逃逸
 
 todo:
 
-
 ### time.Timer
 
 #### go1.4
+
 1. 每个p（processor）拥有一个timers堆，无锁
 - 在goruntine调度之前，都会检查是否有到期timer，并且优先调度
 - timer 使用 netpoll 进行驱动
 
-
 #### go1.4 before
+
 1. 有锁的全局timers堆
 - 通新的goruntine timeproc驱动timer，timeproc内部通过系统sleep来等待的
-    
-
-
 
 **参考资料**
 [74 Go time.Timer 源码分析（Go1.14）](https://www.bilibili.com/video/av81849820)
 [17.2 time.* 的计时器 Timer](https://changkun.de/golang/zh-cn/part4lib/ch17other/time/)
 
-
-
-
-
 ## tools
+
 - go build
 - go tool compile
 - go tool trace
 - gdb
 - GODEBUG
-```
-GODEBUG=schedtrace=DURATION
-```
+  
+  ```
+  GODEBUG=schedtrace=DURATION
+  ```
 - profiling
 
-
-
 ## 基本用法
+
 - sync.Once
+
 - sync.Pool
+
 - sync.atomic
 
 - select
-- switch
 
+- switch
 
 ### context.Context
 
@@ -637,7 +621,6 @@ context 主要用来在 goroutine 之间传递上下文信息，包括：取消�
 2. The chain of function calls between them must propagate the Context, optionally replacing it with a derived Context created using WithCancel, WithDeadline, WithTimeout, or WithValue. 
 3. When a Context is canceled, all Contexts derived from it are also canceled.
 4. 每个Context存放一个key、value，子节点可以通过context继承列表遍历查到父context的kv
-
 
 ```golang
 // A Context carries a deadline, cancelation signal, and request-scoped values
@@ -725,18 +708,14 @@ func WithCancel(parent Context) (ctx Context, cancel CancelFunc)
 func WithDeadline(parent Context, deadline time.Time) (Context, CancelFunc)
 func WithTimeout(parent Context, timeout time.Duration) (Context, CancelFunc)
 func WithValue(parent Context, key, val interface{}) Context
-
 ```
-
 
 **参考**
 
 [context](https://qcrao91.gitbook.io/go/biao-zhun-ku/context)
 
-
-
-
 ## 细节
+
 [Go语言101](https://gfw.go101.org/article/101.html)  
 time.After资源释放
 
@@ -752,8 +731,8 @@ func After(d Duration) <-chan Time {
 }
 ```
 
-
 ## 常问问题
+
 - gpm模型说一下，gpm为什么比gm模型好
 - go程序最少，最多起多少个线程
 - gc的过程说一下
@@ -761,25 +740,22 @@ func After(d Duration) <-chan Time {
 - make返回的是指针还是引用
 - select中的分支返回的顺序
 - 一个goruntime最少消耗多少内存
-8K的栈空间
-
+  8K的栈空间
 
 ## 新变化
+
 系统信号的异步抢占调度
 [Go 1.14中值得关注的几个变化](https://tonybai.com/2020/03/08/some-changes-in-go-1-14/)
 [关于Go1.14，你一定想知道的性能提升与新特性](https://juejin.im/post/5e3f9990e51d4526cc3b1672)
 
-
-
-
 ## web框架
+
 ### gin
 
 ### fasthttp
 
-
-
 ## 参考
+
 [Go-Questions](https://qcrao91.gitbook.io/go/)
 [Go 语言设计与实现](https://draveness.me/golang/)
 [Go 语言原本](https://changkun.de/golang/)
@@ -797,16 +773,9 @@ func After(d Duration) <-chan Time {
 [](https://github.com/gopherchina/conference)
 [Go语言高级编程](https://chai2010.cn/advanced-go-programming-book/)
 
-
-
-
-
 这个桶的结构体 bmap 在 Go 语言源代码中的定义只包含一个简单的 tophash 字段，tophash 存储了键的哈希的高 8 位，通过比较不同键的哈希的高 8 位可以减少访问键值对次数以提高性能：
 
 bmap 结构体其实不止包含 tophash 字段
-
-
-
 
 当调用此函数的时候，可以传入任意类型，只要它实现了 say_hello() 函数就可以。如果没有实现，运行过程中会出现错误。
 
@@ -814,9 +783,6 @@ bmap 结构体其实不止包含 tophash 字段
 
 一个对象有效的语义，不是由继承自特定的类或实现特定的接口，而是由它"当前方法和属性的集合"决定。
 
-
-
-
-
 ## TODO
+
 <https://www.bangbangde.com/post/10_mistake_in_go_project.html>

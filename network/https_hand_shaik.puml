@@ -1,0 +1,21 @@
+@startuml
+
+client -> server: client_hello()
+server -> client: client_hello()
+== 1==
+server -> client: certificate
+server -> client: server_key_exchange
+server -> client: request
+server -> client: server_hello_done
+== 1==
+client -> server: certificate
+client -> server: server_key_exchange
+client -> server: certificate_verfiy
+== 1==
+client -> server: change_cipher_spec
+client -> server: finished
+server -> client: change_cipher_spec
+server -> client: finished
+
+@enduml
+
