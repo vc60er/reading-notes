@@ -37,7 +37,7 @@
 
 
 ## TCP头格式
-![pic](https://coolshell.cn/wp-content/uploads/2014/05/TCP-Header-01.jpg)
+![pic](https://coolshell.org/wp-content/uploads/2014/05/TCP-Header-01.jpg)
 
 * SeqNum：数据包的发送序号，连接建立之初SeqNum不一定是0，SeqNum的增加是和传输的字节数相关的
 * AckNum：接收到数据，最大的连续包的SeqNum+1
@@ -46,7 +46,7 @@
 
 ## TCP的状态机
 
-![pic](https://coolshell.cn/wp-content/uploads/2014/05/tcp_open_close.jpg)
+![pic](https://coolshell.org/wp-content/uploads/2014/05/tcp_open_close.jpg)
 
 
 1. tcp是建立在不可靠网络之上的，这个网络上的传输也不存在连接，所谓连接其实是指通信双方维护的“连接状态”
@@ -88,7 +88,7 @@
 
 丢包事件通过三次相同的ack来判断。实现方式是，如果接收方收到不连续的包，则会其及对后续收到的包都ack最后一个连续的包，发送方收到3个相同的ack之后，认为此包丢失。会重传丢失包及其后续的所有包
 
-![pic](https://coolshell.cn/wp-content/uploads/2014/05/FASTIncast021.png)
+![pic](https://coolshell.org/wp-content/uploads/2014/05/FASTIncast021.png)
 
 
 ### SACK 方法
@@ -96,7 +96,7 @@
 Selective Acknowledgment (SACK)（参看RFC 2018），这种方式需要在TCP头里加一个SACK的东西，ACK还是Fast Retransmit的ACK，SACK则是汇报收到的数据碎版。这样，在发送端就可以根据回传的SACK来知道哪些数据到了，哪些没有到。
 
 
-![pic](https://coolshell.cn/wp-content/uploads/2014/05/tcp_sack_example-1024x577.jpg)
+![pic](https://coolshell.org/wp-content/uploads/2014/05/tcp_sack_example-1024x577.jpg)
 
 
 ### Duplicate SACK – 重复收到数据的问题
@@ -148,7 +148,7 @@ Karn / Partridge算法的解决办法是：
 - 当发生重传，就对现有的RTO值翻倍
 
 
-![pic](https://coolshell.cn/wp-content/uploads/2014/05/Karn-Partridge-Algorithm.jpg)
+![pic](https://coolshell.org/wp-content/uploads/2014/05/Karn-Partridge-Algorithm.jpg)
 
 
 #### Jacobson / Karels 算法
@@ -203,7 +203,7 @@ LastByteRcved: 收到的包的最后一个位置
 
 再来看一下发送方是如何使用AdvertisedWindow的:
 
-![pic](https://coolshell.cn/wp-content/uploads/2014/05/tcpswwindows.png)
+![pic](https://coolshell.org/wp-content/uploads/2014/05/tcpswwindows.png)
 
 - 已收到ack确认的数据。
 - 发送未ack的数据
@@ -213,7 +213,7 @@ LastByteRcved: 收到的包的最后一个位置
 
 滑动窗口包括：发送未ack的数据，未发送数据
 
-![pic](https://coolshell.cn/wp-content/uploads/2014/05/tcpswslide.png)
+![pic](https://coolshell.org/wp-content/uploads/2014/05/tcpswslide.png)
 
 所以：
 
@@ -225,7 +225,7 @@ LastByteRcved: 收到的包的最后一个位置
 如果越到接收缓慢的情况，window可能会变成0，如果window=0，那么数据将不再发送，如下图所示：
 
 
-![pic](https://coolshell.cn/wp-content/uploads/2014/05/tcpswflow.png)
+![pic](https://coolshell.org/wp-content/uploads/2014/05/tcpswflow.png)
 
 解决这个问题，TCP使用了Zero Window Probe技术，缩写为ZWP:
 
@@ -268,7 +268,7 @@ LastByteRcved: 收到的包的最后一个位置
 4. 还有一个ssthresh（slow start threshold），是一个上限，当cwnd >= ssthresh时，就会进入“拥塞避免算法”
 
 
-![pic](https://coolshell.cn/wp-content/uploads/2014/05/tcp.slow_.start_.jpg)
+![pic](https://coolshell.org/wp-content/uploads/2014/05/tcp.slow_.start_.jpg)
 
 
 
@@ -337,7 +337,7 @@ todo
 
 下面我们来看一个简单的图示以同时看一下上面的各种算法的样子：
 
-![pic](https://coolshell.cn/wp-content/uploads/2014/05/tcp.fr_.jpg)
+![pic](https://coolshell.org/wp-content/uploads/2014/05/tcp.fr_.jpg)
 
 
 #### FACK算法
@@ -380,7 +380,7 @@ westwood采用和Reno相同的慢启动算法、拥塞避免算法。westwood的
 
 
 ## 参考文章
-- <https://coolshell.cn/articles/11564.html>
-- <https://coolshell.cn/articles/11609.html>
+- <https://coolshell.org/articles/11564.html>
+- <https://coolshell.org/articles/11609.html>
 - <https://zh.wikipedia.org/wiki/TCP%E6%8B%A5%E5%A1%9E%E6%8E%A7%E5%88%B6>
 - <https://datatracker.ietf.org/doc/html/rfc5681>
